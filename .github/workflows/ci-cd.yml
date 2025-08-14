@@ -22,5 +22,5 @@ jobs:
           WPSCAN_API: ${{ secrets.WPSCAN_API }}
         run: |
           gem install wpscan --user-install
-          export PATH="$HOME/.gem/ruby/3.2.0/bin:$PATH"
+          export PATH="$HOME/.gem/ruby/3.0.0/bin:$HOME/.gem/ruby/3.1.0/bin:$HOME/.gem/ruby/3.2.0/bin:$PATH"
           wpscan --url $SITE_URL --api-token $WPSCAN_API --disable-tls-checks
