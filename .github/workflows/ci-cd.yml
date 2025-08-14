@@ -17,8 +17,10 @@ jobs:
       - name: Vérifier disponibilité du site
         run: curl -I -f $SITE_URL
 
-      - name: Scanner le site avec WPScan
-        uses: wpscanteam/wpscan-action@v1
-        with:
-          url: ${{ env.SITE_URL }}
-          api_token: ${{ secrets.WPSCAN_API }}
+      - name: Installer WPScan et scanner le site
+        env:
+          WPSCAN_API: ${{ secrets.WPSCAN_API }}
+        run: |
+          gem install wpscan --user-install
+          export PATH="$HOME/.gem/ruby/3.2.0/bin:$PATH"
+          wpscan --url $SITE_URL --api-token $WPSCAN_API --disable-tls-checks
