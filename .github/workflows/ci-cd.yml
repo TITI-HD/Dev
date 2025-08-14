@@ -1,0 +1,27 @@
+name: Supervision WordPress.com
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.12"
+  SITE_URL: "https://oupssecuretest.wordpress.com"
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Vérifier disponibilité du site
+        run: |
+          curl -I -f $SITE_URL
+
+      - name: Scanner le site avec WPScan
+        env:
+          WPSCAN_API: ${{ secrets.WPSCAN_API }}
+        run: |
+          gem install wpscan
+          wpscan --url $SITE_URL --api-token $WPSCAN_API --disable-tls-checks

@@ -1,0 +1,7 @@
+env:
+  SERVER_HOST: ${{ secrets.SERVER_HOST }}
+  SERVER_USER: ${{ secrets.SERVER_USER }}
+  SERVER_SSH_PORT: ${{ secrets.SERVER_SSH_PORT }}
+  PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+  SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+  WPSCAN_API: ${{ secrets.WPSCAN_API }}
