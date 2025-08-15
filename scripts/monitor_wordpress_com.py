@@ -7,8 +7,8 @@ from datetime import datetime
 
 SITE_URL = os.environ.get("oupssecuretest.wordpress.com")
 BACKUP_DIR = "backups"
-ALERT_EMAIL = os.environ.get("ALERT_EMAIL")
-SMTP_SERVER = os.environ.get("danieltiti882@gmail.com")
+ALERT_EMAIL = os.environ.get("danieltiti882@gmail.com")
+SMTP_SERVER = os.environ.get("gmail")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", 587))
 SMTP_USER = os.environ.get("danieltiti882@gmail.com")
 SMTP_PASS = os.environ.get("Smvqp hyhf iagh rveg")
