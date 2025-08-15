@@ -5,13 +5,13 @@ import smtplib
 from email.mime.text import MIMEText
 from datetime import datetime
 
-SITE_URL = os.environ.get("oupssecuretest.wordpress.com")
+SITE_URL = os.environ.get("ouspsecuretest.wordpress.com")
 BACKUP_DIR = "backups"
 ALERT_EMAIL = os.environ.get("danieltiti882@gmail.com")
 SMTP_SERVER = os.environ.get("gmail")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", 587))
 SMTP_USER = os.environ.get("danieltiti882@gmail.com")
-SMTP_PASS = os.environ.get("Smvqp hyhf iagh rveg")
+SMTP_PASS = os.environ.get("mvqp hyhf iagh rveg")
 
 def send_alert(subject, message):
     msg = MIMEText(message)
@@ -22,6 +22,8 @@ def send_alert(subject, message):
         server.starttls()
         server.login(SMTP_USER, SMTP_PASS)
         server.sendmail(SMTP_USER, ALERT_EMAIL, msg.as_string())
+
+# ...le reste du script inchangé...
 
 def save_content(url, filename):
     try:
