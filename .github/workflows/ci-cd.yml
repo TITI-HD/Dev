@@ -1,26 +1,40 @@
 name: Supervision WordPress.com
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  schedule:
+    - cron: '0 0 * * *'  # Tous les jours à minuit
   workflow_dispatch:
-
-env:
-  SITE_URL: "https://oupssecuretest.wordpress.com"
 
 jobs:
   monitor:
     runs-on: ubuntu-latest
     steps:
-      - name: Vérifier disponibilité du site
-        run: curl -I -f $SITE_URL
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Installer WPScan et scanner le site
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Installer les dépendances
+        run: pip install requests
+
+      - name: Sauvegarder et surveiller le site
         env:
-          WPSCAN_API: ${{ secrets.WPSCAN_API }}
+          SITE_URL: "https://oupssecuretest.wordpress.com"
+          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
         run: |
-          gem install wpscan --user-install
-          export PATH="$HOME/.local/share/gem/ruby/3.2.0/bin:$PATH"
-          wpscan --url $SITE_URL --api-token $WPSCAN_API --disable-tls-checks
+          python scripts/monitor_wordpress_com.py
+
+      - name: Commit des sauvegardes
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add backups/
+          git commit -m "Sauvegarde quotidienne automatique" || echo "Rien à commiter"
+          git push || echo "Pas de push possible"
