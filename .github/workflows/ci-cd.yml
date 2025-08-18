@@ -23,10 +23,10 @@ jobs:
 
       - name: 🚀 Exécuter le script de surveillance
         env:
-          SITE_URL: ${{ secrets.SITE_URL }}
-          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
-          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SITE_URL: ${{oupssecuretest.wordpress.com}}
+          ALERT_EMAIL: ${{ secrets.danieltiti882@gmail.com}}
+          SMTP_SERVER: ${{ secrets.danieltiti882@gmail.com}}
+          SMTP_PORT: ${{ secrets.587}}
+          SMTP_USER: ${{ secrets.danieltiti882@gmail.com}}
+          SMTP_PASS: ${{ secrets.osmp bmyl hzhd gtvz}}
         run: python monitor.py
