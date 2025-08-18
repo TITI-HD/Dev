@@ -25,7 +25,7 @@ jobs:
         env:
           SITE_URL: ${{oupssecuretest.wordpress.com}}
           ALERT_EMAIL: ${{ secrets.danieltiti882@gmail.com}}
-          SMTP_SERVER: ${{ secrets.danieltiti882@gmail.com}}
+          SMTP_SERVER: ${{ secrets.gmail.com}}
           SMTP_PORT: ${{ secrets.587}}
           SMTP_USER: ${{ secrets.danieltiti882@gmail.com}}
           SMTP_PASS: ${{ secrets.osmp bmyl hzhd gtvz}}
