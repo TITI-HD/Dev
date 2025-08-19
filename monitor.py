@@ -10,20 +10,19 @@ from datetime import datetime
 # 🔧 Configuration via variables d'environnement
 # ===============================
 SITE_URL = os.environ.get("SITE_URL", "https://oupssecuretest.wordpress.com")
-ALERT_EMAIL = os.environ.get("ALERT_EMAIL",danieltiti882@gmail.com"")
+ALERT_EMAIL = os.environ.get("ALERT_EMAIL", "danieltiti882@gmail.com")  # Guillemets ajoutés
 SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = os.environ.get("SMTP_PORT", "587")
-SMTP_USER = os.environ.get("SMTP_USER",danieltiti882@gmail.com)
-SMTP_PASS = os.environ.get("SMTP_PASS", "frwl akld agpo yaki")
+SMTP_USER = os.environ.get("SMTP_USER", "danieltiti882@gmail.com")  # Guillemets ajoutés
+SMTP_PASS = os.environ.get("SMTP_PASS", "")  # Mot de passe vide par défaut
 BACKUP_DIR = "backups"
 
 # Vérification du port
 try:
-    SMTP_PORT = int(SMTP_PORT) if SMTP_PORT.strip() else 587
+    SMTP_PORT = int(SMTP_PORT) if SMTP_PORT and SMTP_PORT.strip() else 587
 except ValueError:
     print("⚠️ SMTP_PORT invalide, utilisation du port par défaut 587")
     SMTP_PORT = 587
-
 
 # ===============================
 # 📧 Envoi d'alerte email
@@ -31,7 +30,12 @@ except ValueError:
 def send_alert(subject: str, message: str):
     if not (SMTP_SERVER and SMTP_USER and SMTP_PASS and ALERT_EMAIL):
         print("⚠️ SMTP non configuré, alerte ignorée.")
+        print(f"SMTP_SERVER: {SMTP_SERVER}")
+        print(f"SMTP_USER: {SMTP_USER}")
+        print(f"SMTP_PASS: {'***' if SMTP_PASS else 'NON_DEFINI'}")
+        print(f"ALERT_EMAIL: {ALERT_EMAIL}")
         return
+    
     try:
         msg = MIMEMultipart()
         msg["From"] = SMTP_USER
@@ -47,7 +51,6 @@ def send_alert(subject: str, message: str):
         print(f"✅ Alerte envoyée à {ALERT_EMAIL}")
     except Exception as e:
         print(f"❌ Erreur envoi mail: {e}")
-
 
 # ===============================
 # 🔍 Vérification de disponibilité du site & API REST
@@ -67,7 +70,6 @@ def check_api(url: str) -> bool:
     except Exception as e:
         print(f"❌ Erreur API: {e}")
         return False
-
 
 # ===============================
 # 💾 Sauvegarde & Comparaison de contenu
@@ -92,7 +94,6 @@ def compare_files(old_file, new_file):
     diff = list(difflib.unified_diff(old, new))
     return "".join(diff)
 
-
 def backup_and_monitor():
     os.makedirs(BACKUP_DIR, exist_ok=True)
     date_str = datetime.now().strftime("%Y%m%d_%H%M")
@@ -106,7 +107,7 @@ def backup_and_monitor():
     rss = save_content(f"{SITE_URL}/feed", rss_file)
     comments = save_content(f"{SITE_URL}/comments/feed", comments_file)
 
-    # Détection changements page d’accueil
+    # Détection changements page d'accueil
     files = sorted([f for f in os.listdir(BACKUP_DIR) if f.startswith("homepage_")])
     if len(files) >= 2:
         diff = compare_files(os.path.join(BACKUP_DIR, files[-2]), homepage_file)
@@ -127,12 +128,15 @@ def backup_and_monitor():
         if diff:
             send_alert("🚨 Nouveau commentaire", diff[:2000])
 
-
 # ===============================
 # 🚀 Main
 # ===============================
 def main():
     print(f"🔍 Vérification du site : {SITE_URL}")
+    print(f"📧 Email d'alerte : {ALERT_EMAIL}")
+    print(f"🔐 SMTP Server : {SMTP_SERVER}:{SMTP_PORT}")
+    print(f"👤 SMTP User : {SMTP_USER}")
+    print(f"🔑 SMTP Pass : {'***' if SMTP_PASS else 'NON_DEFINI'}")
 
     site_ok = check_site(SITE_URL)
     api_ok = check_api(SITE_URL)
@@ -144,7 +148,6 @@ def main():
 
     # Sauvegarde + surveillance contenu
     backup_and_monitor()
-
 
 if __name__ == "__main__":
     main()
