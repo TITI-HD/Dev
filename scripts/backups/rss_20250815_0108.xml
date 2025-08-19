@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"
+	xmlns:content="http://purl.org/rss/1.0/modules/content/"
+	xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:atom="http://www.w3.org/2005/Atom"
+	xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
+	xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
+	xmlns:georss="http://www.georss.org/georss" xmlns:geo="http://www.w3.org/2003/01/geo/wgs84_pos#" xmlns:media="http://search.yahoo.com/mrss/"
+	>
+
+<channel>
+	<title>Daniel Titi Développeur Full-Stack</title>
+	<atom:link href="https://oupssecuretest.wordpress.com/feed/" rel="self" type="application/rss+xml" />
+	<link>https://oupssecuretest.wordpress.com</link>
+	<description></description>
+	<lastBuildDate>Fri, 08 Aug 2025 21:45:34 +0000</lastBuildDate>
+	<language>fr-FR</language>
+	<sy:updatePeriod>
+	hourly	</sy:updatePeriod>
+	<sy:updateFrequency>
+	1	</sy:updateFrequency>
+	<generator>http://wordpress.com/</generator>
+
+<image>
+	<url>https://oupssecuretest.wordpress.com/wp-content/uploads/2025/08/wp-1754687998255.jpg?w=32</url>
+	<title>Daniel Titi Développeur Full-Stack</title>
+	<link>https://oupssecuretest.wordpress.com</link>
+	<width>32</width>
+	<height>32</height>
+</image> 
+<cloud domain='oupssecuretest.wordpress.com' port='80' path='/?rsscloud=notify' registerProcedure='' protocol='http-post' />
+<atom:link rel="search" type="application/opensearchdescription+xml" href="https://oupssecuretest.wordpress.com/osd.xml" title="Daniel Titi Développeur Full-Stack" />
+	<atom:link rel='hub' href='https://oupssecuretest.wordpress.com/?pushpress=hub'/>
+	<item>
+		<title>Un commentaire de votre part m&#8217;est le niveau Merci.🙏</title>
+		<link>https://oupssecuretest.wordpress.com/2025/08/08/un-commentaire-de-votre-part-mest-le-niveau-merci-%f0%9f%99%8f/</link>
+					<comments>https://oupssecuretest.wordpress.com/2025/08/08/un-commentaire-de-votre-part-mest-le-niveau-merci-%f0%9f%99%8f/#comments</comments>
+		
+		<dc:creator><![CDATA[mroups]]></dc:creator>
+		<pubDate>Fri, 08 Aug 2025 21:45:34 +0000</pubDate>
+				<category><![CDATA[Non classé]]></category>
+		<category><![CDATA[dailyprompt]]></category>
+		<category><![CDATA[dailyprompt-2024]]></category>
+		<guid isPermaLink="false">http://oupssecuretest.wordpress.com/2025/08/08/un-commentaire-de-votre-part-mest-le-niveau-merci-%f0%9f%99%8f/</guid>
+
+					<description><![CDATA[Quel changement, petit ou grand, voudriez-vous que votre blog apporte au monde&#160;?]]></description>
+										<content:encoded><![CDATA[
+<figure class="wp-block-pullquote"><blockquote><p>Quel changement, petit ou grand, voudriez-vous que votre blog apporte au monde&nbsp;?</p></blockquote></figure>
+
+
+
+<p></p>
+]]></content:encoded>
+					
+					<wfw:commentRss>https://oupssecuretest.wordpress.com/2025/08/08/un-commentaire-de-votre-part-mest-le-niveau-merci-%f0%9f%99%8f/feed/</wfw:commentRss>
+			<slash:comments>1</slash:comments>
+		
+		
+		
+		<media:content url="https://1.gravatar.com/avatar/df99303c095eba195f0b4590e6c634294ff788e1748b2f640a1c682c912b6bff?s=96&#38;d=identicon&#38;r=G" medium="image">
+			<media:title type="html">mroups</media:title>
+		</media:content>
+	</item>
+	</channel>
+</rss>

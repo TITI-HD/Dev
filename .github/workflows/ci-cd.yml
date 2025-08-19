@@ -2,8 +2,8 @@ name: 🔍 Surveillance WordPress.com
 
 on:
   schedule:
-    - cron: "*/30 * * * *"   # Vérifie toutes les 30 minutes
-  workflow_dispatch:          # Exécution manuelle possible
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
 
 jobs:
   monitor:
@@ -23,10 +23,15 @@ jobs:
 
       - name: 🚀 Exécuter le script de surveillance
         env:
-          SITE_URL: ${{oupssecuretest.wordpress.com}}
-          ALERT_EMAIL: ${{ secrets.danieltiti882@gmail.com}}
-          SMTP_SERVER: ${{ secrets.gmail.com}}
-          SMTP_PORT: ${{ secrets.587}}
-          SMTP_USER: ${{ secrets.danieltiti882@gmail.com}}
-          SMTP_PASS: ${{ secrets.osmp bmyl hzhd gtvz}}
+          # URL du site à surveiller
+          SITE_URL: https://oupssecuretest.wordpress.com
+          # Email qui recevra l'alerte (peut rester en clair)
+          ALERT_EMAIL: danieltiti882@gmail.com
+          # Configuration SMTP pour Gmail
+          SMTP_SERVER: smtp.gmail.com
+          SMTP_PORT: 587
+          # Les identifiants SMTP DOIVENT être des secrets GitHub
+          # SMTP_USER est probablement le même que ALERT_EMAIL
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASSWORD }}
         run: python monitor.py
