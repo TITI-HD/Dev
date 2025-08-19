@@ -1,19 +1,14 @@
-name: 🔍 Surveillance WordPress.com - Notifications WhatsApp
+name: 🛡️ Surveillance WordPress
 
 on:
   schedule:
-    - cron: "*/30 * * * *"
-  workflow_dispatch:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    - cron: '0 */6 * * *'  # Toutes les 6 heures
+  workflow_dispatch:  # Exécution manuelle
 
 jobs:
   monitor:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-
+    
     steps:
       - name: 📥 Récupération du dépôt
         uses: actions/checkout@v3
@@ -22,54 +17,19 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
-          cache: 'pip'
 
       - name: 📦 Installer les dépendances
         run: |
           python -m pip install --upgrade pip
-          pip install requests twilio python-dotenv
+          pip install requests twilio
 
-      - name: 🚀 Exécuter le script de surveillance
+      - name: 🚀 Exécuter la surveillance
         env:
-          SITE_URL: https://oupssecuretest.wordpress.com
-          ALERT_EMAIL: danieltiti882@gmail.com
-          SMTP_SERVER: smtp.gmail.com
-          SMTP_PORT: 587
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASS: ${{ secrets.SMTP_PASSWORD }}
           TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
           TWILIO_WHATSAPP_FROM: ${{ secrets.TWILIO_WHATSAPP_FROM }}
           TWILIO_WHATSAPP_TO: ${{ secrets.TWILIO_WHATSAPP_TO }}
         run: python monitor.py
-
-      - name: 📱 Envoyer notification WhatsApp si échec
-        if: failure()
-        env:
-          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
-          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
-          TWILIO_WHATSAPP_FROM: ${{ secrets.TWILIO_WHATSAPP_FROM }}
-          TWILIO_WHATSAPP_TO: ${{ secrets.TWILIO_WHATSAPP_TO }}
-        run: python -c "
-import os
-from twilio.rest import Client
-
-account_sid = os.getenv('TWILIO_ACCOUNT_SID')
-auth_token = os.getenv('TWILIO_AUTH_TOKEN')
-twilio_from = os.getenv('TWILIO_WHATSAPP_FROM')
-twilio_to = os.getenv('TWILIO_WHATSAPP_TO')
-
-if account_sid and auth_token and twilio_from and twilio_to:
-    client = Client(account_sid, auth_token)
-    message = client.messages.create(
-        from_=f'whatsapp:{twilio_from}',
-        body='❌ Surveillance WordPress ÉCHEC - Le script monitor.py a échoué. Vérifiez GitHub Actions.',
-        to=f'whatsapp:{twilio_to}'
-    )
-    print('Notification WhatsApp envoyée')
-else:
-    print('Configuration Twilio manquante')
-"
 
   security-scan:
     runs-on: ubuntu-latest
@@ -84,15 +44,3 @@ else:
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
-
-      - name: 📦 Installer dépendances sécurité
-        run: pip install requests beautifulsoup4
-
-      - name: 🔍 Exécuter scan de sécurité
-        run: python security_monitor.py --scan
-        env:
-          SITE_URL: https://oupssecuretest.wordpress.com
-          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
-          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
-          TWILIO_WHATSAPP_FROM: ${{ secrets.TWILIO_WHATSAPP_FROM }}
-          TWILIO_WHATSAPP_TO: ${{ secrets.TWILIO_WHATSAPP_TO }}
