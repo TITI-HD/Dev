@@ -31,10 +31,12 @@ jobs:
 
       - name: 🚀 Exécuter le script de surveillance
         env:
+          # Configuration SMTP CORRIGÉE
           SITE_URL: https://oupssecuretest.wordpress.com
           ALERT_EMAIL: danieltiti882@gmail.com
           SMTP_SERVER: smtp.gmail.com
           SMTP_PORT: 587
+          # Syntaxe CORRIGÉE : ${{ secrets.X }} au lieu de $(( secrets.X ))
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASSWORD }}
           TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
