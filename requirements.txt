@@ -1,7 +1,2 @@
 requests
-paramiko
-boto3
-cryptography
-schedule
-python-dotenv
-pytest
+beautifulsoup4

@@ -10,11 +10,11 @@ from datetime import datetime
 # 🔧 Configuration via variables d'environnement
 # ===============================
 SITE_URL = os.environ.get("SITE_URL", "https://oupssecuretest.wordpress.com")
-ALERT_EMAIL = os.environ.get("ALERT_EMAIL", "")
+ALERT_EMAIL = os.environ.get("ALERT_EMAIL",danieltiti882@gmail.com"")
 SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = os.environ.get("SMTP_PORT", "587")
-SMTP_USER = os.environ.get("SMTP_USER", "")
-SMTP_PASS = os.environ.get("SMTP_PASS", "")
+SMTP_USER = os.environ.get("SMTP_USER",danieltiti882@gmail.com)
+SMTP_PASS = os.environ.get("SMTP_PASS", "frwl akld agpo yaki")
 BACKUP_DIR = "backups"
 
 # Vérification du port
