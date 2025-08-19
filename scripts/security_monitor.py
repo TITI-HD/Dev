@@ -71,3 +71,43 @@ if __name__ == "__main__":
         run_monitor()
     else:
         print("Usage: python security_monitor.py --monitor")
+
+
+def check_wordpress_version(config):
+    """Vérifier si la version WordPress est à jour"""
+    url = f"{config['wordpress']['url']}/wp-includes/version.php"
+    try:
+        response = requests.get(url, timeout=5)
+        # Analyser la version et comparer avec la dernière version stable
+        # Alert si version vulnérable
+    except Exception as e:
+        log(f"Erreur vérification version: {e}", level="error")
+
+def check_plugins_vulnerabilities(config):
+    """Vérifier les plugins connus comme vulnérables"""
+    # Intégration avec WPScan API ou CVE databases
+
+def performance_check(url):
+    """Vérifier les performances du site"""
+    start_time = time.time()
+    requests.get(url)
+    load_time = time.time() - start_time
+    
+    if load_time > 3:  # Seuil de 3 secondes
+        send_alert("🐌 Site lent", f"Temps de chargement: {load_time:.2f}s")
+
+
+def check_ssl_config(url):
+    """Vérifier la configuration SSL"""
+    try:
+        import ssl
+        context = ssl.create_default_context()
+        with socket.create_connection((url, 443)) as sock:
+            with context.wrap_socket(sock, server_hostname=url) as ssock:
+                cert = ssock.getpeercert()
+                # Vérifier la date d'expiration
+                expiry_date = datetime.strptime(cert['notAfter'], '%b %d %H:%M:%S %Y %Z')
+                if (expiry_date - datetime.now()).days < 30:
+                    send_alert("🔒 SSL Expire bientôt", f"Expire le: {expiry_date}")
+    except Exception as e:
+        log(f"Erreur vérification SSL: {e}", level="error")

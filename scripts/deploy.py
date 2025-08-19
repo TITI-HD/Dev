@@ -125,3 +125,45 @@ if __name__ == "__main__":
 def test_load_config():
     config = load_config("config/production.ini")
     assert "wordpress" in config
+
+def rollback(self):
+    """Restauration automatique depuis le dernier backup"""
+    try:
+        # Trouver le backup le plus récent
+        find_cmd = f"find {self.config['wordpress']['path']} -name 'wp-content-backup-*' -type d | sort -r | head -1"
+        stdin, stdout, stderr = self.ssh_client.exec_command(find_cmd)
+        latest_backup = stdout.read().decode().strip()
+        
+        if latest_backup:
+            # Restaurer le backup
+            restore_cmd = f"rm -rf {self.config['wordpress']['path']}/wp-content && cp -r {latest_backup} {self.config['wordpress']['path']}/wp-content"
+            self.ssh_client.exec_command(restore_cmd)
+            log(f"Restauration depuis {latest_backup} réussie")
+        else:
+            log("Aucun backup trouvé pour restauration", level="error")
+            
+    except Exception as e:
+        log(f"Erreur lors du rollback: {e}", level="error")
+
+    # Actuel: vérification toutes les 30 minutes
+# Modifier dans ci-cd.yml: cron: "*/15 * * * *" pour 15min
+
+# Ou ajouter une vérification plus fréquente pour les sites critiques
+def main():
+    # Vérifier toutes les 5 minutes en plus du check principal
+    schedule.every(5).minutes.do(check_site, SITE_URL)
+    def check_site(url: str) -> bool:
+    try:
+        r = requests.get(url, timeout=10)
+        # Ajouter un seuil de performance (2 secondes max)
+        if r.elapsed.total_seconds() > 2:
+            send_alert("⚠️ Site lent", f"Temps de réponse: {r.elapsed.total_seconds()}s")
+        return r.status_code == 200
+    except Exception as e:
+        print(f"❌ Erreur site: {e}")
+        return False
+
+# Actuel: alerte pour tout changement
+# Modifier pour ignorer les petits changements
+if diff and len(diff) > 100:  # Seulement si changement > 100 caractères
+    send_alert("🚨 Changement page d'accueil", diff[:2000])
