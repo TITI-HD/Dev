@@ -1,10 +1,13 @@
-import os
+timport os
 import smtplib
 import requests
 import difflib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
+
+import os
+import requests
 from twilio.rest import Client  # Nouvelle importation
 
 # ===============================
@@ -199,3 +202,53 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# ======================
+# 🔧 Configuration
+# ======================
+
+# Ton dépôt GitHub
+REPO = "TITI-HD/Dev"
+
+# Ton token GitHub (à générer dans Settings > Developer settings > Personal Access Token)
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+
+# ======================
+# 🚀 Fonction principale
+# ======================
+
+def check_workflow():
+    url = f"https://api.github.com/repos/{REPO}/actions/runs"
+    headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
+
+    try:
+        response = requests.get(url, headers=headers)
+        data = response.json()
+
+        if "workflow_runs" not in data:
+            print("⚠️ Impossible de récupérer les workflows.")
+            print(data)
+            return
+
+        latest = data["workflow_runs"][0]
+        status = latest["status"]
+        conclusion = latest["conclusion"]
+
+        print(f"📌 Dernier workflow : {latest['name']}")
+        print(f"➡️ Status : {status}")
+        print(f"➡️ Conclusion : {conclusion}")
+
+        if conclusion == "success":
+            print("✅ Workflow terminé avec succès !")
+        elif conclusion == "failure":
+            print("❌ Workflow a échoué !")
+        else:
+            print("⏳ Workflow en cours ou annulé.")
+
+    except Exception as e:
+        print(f"Erreur : {e}")
+
+
+if __name__ == "__main__":
+    check_workflow()
