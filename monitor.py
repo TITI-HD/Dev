@@ -1,3 +1,8 @@
+"""
+SCRIPT PRINCIPAL DE SURVEILLANCE WORDPRESS
+Surveillance complète avec alertes email/WhatsApp et sauvegarde de contenu
+"""
+
 import os
 import smtplib
 import requests
@@ -5,14 +10,12 @@ import difflib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
-
-import os
-import requests
-from twilio.rest import Client  # Nouvelle importation
+from twilio.rest import Client  # API Twilio pour WhatsApp
 
 # ===============================
-# 🔧 Configuration via variables d'environnement
+# 🔧 CONFIGURATION - VARIABLES D'ENVIRONNEMENT
 # ===============================
+# Récupération des paramètres depuis les variables d'environnement
 SITE_URL = os.environ.get("SITE_URL", "https://oupssecuretest.wordpress.com")
 ALERT_EMAIL = os.environ.get("ALERT_EMAIL", "danieltiti882@gmail.com")
 SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
@@ -23,9 +26,9 @@ TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID", "ACLaf94Qd99d9e1992f9f
 TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "4f48382904fc7900dcccedfc9")
 TWILIO_WHATSAPP_FROM = os.environ.get("TWILIO_WHATSAPP_FROM", "+14155238886")
 TWILIO_WHATSAPP_TO = os.environ.get("TWILIO_WHATSAPP_TO", "+237691796777")
-BACKUP_DIR = "backups"
+BACKUP_DIR = "backups"  # Dossier de sauvegarde local
 
-# Vérification du port
+# Validation et conversion du port SMTP
 try:
     SMTP_PORT = int(SMTP_PORT) if SMTP_PORT and SMTP_PORT.strip() else 587
 except ValueError:
@@ -33,16 +36,25 @@ except ValueError:
     SMTP_PORT = 587
 
 # ===============================
-# 📱 Envoi de notification WhatsApp
+# 📱 FONCTION D'ENVOI WHATSAPP
 # ===============================
 def send_whatsapp_notification(message: str):
-    """Envoie une notification via WhatsApp Twilio"""
+    """
+    Envoie une notification via WhatsApp Twilio
+    Args:
+        message (str): Message à envoyer
+    Returns:
+        bool: Succès de l'envoi
+    """
+    # Vérification de la configuration Twilio
     if not all([TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM, TWILIO_WHATSAPP_TO]):
         print("⚠️ Configuration Twilio manquante, notification WhatsApp ignorée.")
         return False
     
     try:
+        # Initialisation client Twilio
         client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        # Envoi du message WhatsApp
         message = client.messages.create(
             from_=f'whatsapp:{TWILIO_WHATSAPP_FROM}',
             body=message,
@@ -55,24 +67,29 @@ def send_whatsapp_notification(message: str):
         return False
 
 # ===============================
-# 📧 Envoi d'alerte email
+# 📧 FONCTION D'ENVOI D'ALERTE EMAIL
 # ===============================
 def send_alert(subject: str, message: str, whatsapp_priority: bool = False):
     """
     Envoie une alerte par email et optionnellement par WhatsApp
-    whatsapp_priority: Si True, envoie aussi sur WhatsApp pour alertes importantes
+    Args:
+        subject (str): Sujet de l'alerte
+        message (str): Contenu du message
+        whatsapp_priority (bool): Si True, envoie aussi sur WhatsApp
     """
     # Envoi Email
     if not (SMTP_SERVER and SMTP_USER and SMTP_PASS and ALERT_EMAIL):
         print("⚠️ SMTP non configuré, alerte email ignorée.")
     else:
         try:
+            # Construction du message email
             msg = MIMEMultipart()
             msg["From"] = SMTP_USER
             msg["To"] = ALERT_EMAIL
             msg["Subject"] = subject
             msg.attach(MIMEText(message, "plain"))
 
+            # Connexion et envoi SMTP
             with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
                 server.starttls()
                 server.login(SMTP_USER, SMTP_PASS)
@@ -88,24 +105,41 @@ def send_alert(subject: str, message: str, whatsapp_priority: bool = False):
         send_whatsapp_notification(whatsapp_message)
 
 # ===============================
-# 🔍 Vérification de disponibilité du site & API REST
+# 🔍 VERIFICATION DISPONIBILITE SITE
 # ===============================
 def check_site(url: str) -> bool:
+    """
+    Vérifie si le site WordPress est accessible
+    Args:
+        url (str): URL du site à vérifier
+    Returns:
+        bool: True si le site est accessible
+    """
     try:
+        # Requête HTTP avec timeout
         r = requests.get(url, timeout=10)
         if r.status_code != 200:
+            # Alerte si code HTTP anormal
             send_alert("🚨 Site WordPress Hors Ligne", 
                       f"Le site {url} répond avec code HTTP {r.status_code}", 
                       whatsapp_priority=True)
             return False
         return True
     except Exception as e:
+        # Alerte en cas d'erreur de connexion
         send_alert("🚨 Site WordPress Inaccessible", 
                   f"Erreur de connexion au site {url}: {e}", 
                   whatsapp_priority=True)
         return False
 
 def check_api(url: str) -> bool:
+    """
+    Vérifie si l'API REST WordPress est accessible
+    Args:
+        url (str): URL de l'API
+    Returns:
+        bool: True si l'API est accessible
+    """
     try:
         r = requests.get(url.rstrip("/") + "/wp-json/", timeout=10)
         return r.status_code == 200
@@ -114,37 +148,63 @@ def check_api(url: str) -> bool:
         return False
 
 # ===============================
-# 💾 Sauvegarde & Comparaison de contenu
+# 💾 SAUVEGARDE ET COMPARAISON CONTENU
 # ===============================
 def save_content(url, filename):
+    """
+    Sauvegarde le contenu d'une URL dans un fichier
+    Args:
+        url (str): URL à sauvegarder
+        filename (str): Chemin du fichier de sauvegarde
+    Returns:
+        str: Contenu sauvegardé ou None en cas d'erreur
+    """
     try:
+        # Téléchargement du contenu
         r = requests.get(url, timeout=10)
         r.raise_for_status()
+        # Écriture dans le fichier
         with open(filename, "w", encoding="utf-8") as f:
             f.write(r.text)
         return r.text
     except Exception as e:
+        # Alerte en cas d'erreur
         send_alert("🚨 Site indisponible", f"Erreur accès {url}: {e}", whatsapp_priority=True)
         return None
 
 def compare_files(old_file, new_file):
+    """
+    Compare deux fichiers et retourne les différences
+    Args:
+        old_file (str): Chemin du fichier ancien
+        new_file (str): Chemin du fichier nouveau
+    Returns:
+        str: Différences entre les fichiers
+    """
     if not os.path.exists(old_file):
         return ""
+    # Lecture et comparaison des fichiers
     with open(old_file, encoding="utf-8") as f1, open(new_file, encoding="utf-8") as f2:
         old = f1.readlines()
         new = f2.readlines()
+    # Génération des différences
     diff = list(difflib.unified_diff(old, new))
     return "".join(diff)
 
 def backup_and_monitor():
+    """
+    Effectue une sauvegarde et surveille les changements
+    """
+    # Création du dossier de sauvegarde
     os.makedirs(BACKUP_DIR, exist_ok=True)
     date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
 
+    # Définition des chemins de sauvegarde
     homepage_file = os.path.join(BACKUP_DIR, f"homepage_{date_str}.html")
     rss_file = os.path.join(BACKUP_DIR, f"rss_{date_str}.xml")
     comments_file = os.path.join(BACKUP_DIR, f"comments_{date_str}.xml")
 
-    # Sauvegardes
+    # Sauvegardes des différents contenus
     homepage = save_content(SITE_URL, homepage_file)
     rss = save_content(f"{SITE_URL}/feed", rss_file)
     comments = save_content(f"{SITE_URL}/comments/feed", comments_file)
@@ -175,9 +235,12 @@ def backup_and_monitor():
                       f"Nouveau commentaire détecté:\n\n{diff[:800]}...")
 
 # ===============================
-# 🚀 Main
+# 🚀 FONCTION PRINCIPALE
 # ===============================
 def main():
+    """
+    Fonction principale de surveillance
+    """
     print(f"🔍 Démarrage surveillance: {SITE_URL}")
     print(f"📧 Email alerte: {ALERT_EMAIL}")
     print(f"📱 WhatsApp configuré: {'OUI' if TWILIO_ACCOUNT_SID else 'NON'}")
@@ -189,8 +252,6 @@ def main():
     if site_ok and api_ok:
         status_message = f"✅ {SITE_URL} en ligne & API REST OK"
         print(status_message)
-        # Notification WhatsApp pour statut OK (optionnel)
-        # send_whatsapp_notification(status_message)
     else:
         error_message = f"{SITE_URL} ou API REST inaccessible"
         print(f"❌ {error_message}")
@@ -202,53 +263,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-# ======================
-# 🔧 Configuration
-# ======================
-
-# Ton dépôt GitHub
-REPO = "TITI-HD/Dev"
-
-# Ton token GitHub (à générer dans Settings > Developer settings > Personal Access Token)
-GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
-
-# ======================
-# 🚀 Fonction principale
-# ======================
-
-def check_workflow():
-    url = f"https://api.github.com/repos/{REPO}/actions/runs"
-    headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
-
-    try:
-        response = requests.get(url, headers=headers)
-        data = response.json()
-
-        if "workflow_runs" not in data:
-            print("⚠️ Impossible de récupérer les workflows.")
-            print(data)
-            return
-
-        latest = data["workflow_runs"][0]
-        status = latest["status"]
-        conclusion = latest["conclusion"]
-
-        print(f"📌 Dernier workflow : {latest['name']}")
-        print(f"➡️ Status : {status}")
-        print(f"➡️ Conclusion : {conclusion}")
-
-        if conclusion == "success":
-            print("✅ Workflow terminé avec succès !")
-        elif conclusion == "failure":
-            print("❌ Workflow a échoué !")
-        else:
-            print("⏳ Workflow en cours ou annulé.")
-
-    except Exception as e:
-        print(f"Erreur : {e}")
-
-
-if __name__ == "__main__":
-    check_workflow()
