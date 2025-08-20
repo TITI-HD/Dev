@@ -1,128 +1,162 @@
-name: CI/CD Pipeline WordPress  # Nom du workflow : Pipeline CI/CD pour WordPress.
+name: 🛡️ CI/CD Complet WordPress.com
 
-on:  # Triggers du workflow.
-  push:  # Sur push.
-    branches:  # Sur branches.
-      - main  # Main.
-  pull_request:  # Sur PR.
-    branches:  # Vers branches.
-      - main  # Main.
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Tous les jours à 2h
+  workflow_dispatch:
+    inputs:
+      restore-environment:
+        description: 'Environment to restore to'
+        required: false
+        default: 'staging'
+  push:
+    branches: [main]
 
-jobs:  # Jobs du workflow.
-  build-and-test:  # Job pour build et tests.
-    runs-on: ubuntu-latest  # Run sur Ubuntu latest.
+env:
+  PYTHON_VERSION: '3.11'
+  SITE_URL: ${{ vars.SITE_URL }}
+  BACKUP_DIR: 'backups'
+  RESTORE_DIR: 'restore'
+  RETENTION_DAYS: '30'
+  GPG_RECIPIENT: ${{ secrets.GPG_RECIPIENT }}
+  GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
-    steps:  # Steps du job.
-      - name: Checkout code  # Step : Checkout.
-        uses: actions/checkout@v4  # Utilise action v4.
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout du code
+        uses: actions/checkout@v4
 
-      - name: Setup Python 3.12  # Step : Setup Python.
-        uses: actions/setup-python@v4  # Action v4.
-        with:  # Params.
-          python-version: '3.12'  # Version Python.
-          cache: 'pip'  # Cache pip.
+      - name: 🐍 Configuration de Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install dependencies  # Step : Install deps.
-        run: pip install -r requirements.txt  # Commande pip.
+      - name: 📦 Installation des dépendances
+        run: pip install -r requirements.txt
 
-      - name: Run security scan  # Step : Run scan.
-        run: python scripts/security_monitor.py --monitor &  # Exécute script (note : & pour background ?).
-        env:  # Env vars.
-          CONFIG_FILE: config/production.ini  # Fichier config.
-          WPSCAN_API: ${{ secrets.WPSCAN_API }}  # Secret WPScan.
+      - name: 🔒 Scan de sécurité Bandit
+        run: |
+          pip install bandit
+          bandit -r . -f html -o security-report.html || true
 
-      - name: Run unit tests (à compléter selon projet)  # Step : Tests (placeholder).
-        run: echo "Tests unitaires à définir"  # Echo placeholder.
+      - name: 📊 Upload du rapport de sécurité
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-report
+          path: security-report.html
 
-  deploy:  # Job pour déploiement.
-    needs: build-and-test  # Dépend de build-and-test.
-    if: github.ref == 'refs/heads/main'  # Si sur main.
-    runs-on: ubuntu-latest  # Ubuntu.
-    environment: production  # Env production.
+  backup:
+    runs-on: ubuntu-latest
+    needs: security-scan
+    environment: production
+    
+    steps:
+      - name: 📥 Checkout du code
+        uses: actions/checkout@v4
 
-    steps:  # Steps.
-      - name: Checkout code  # Checkout.
-        uses: actions/checkout@v4  # v4.
+      - name: 🐍 Configuration de Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Setup Python 3.12  # Setup Python.
-        uses: actions/setup-python@v4  # v4.
-        with:  # Params.
-          python-version: '3.12'  # Version.
-          cache: 'pip'  # Cache.
+      - name: 📦 Installation des dépendances
+        run: pip install -r requirements.txt
 
-      - name: Install dependencies  # Install deps.
-        run: pip install -r requirements.txt  # Pip.
+      - name: 🔑 Configuration GPG
+        run: |
+          gpg --batch --import-options import-restore --import <<< "${{ secrets.GPG_PRIVATE_KEY }}"
+          echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback --import <<< "${{ secrets.GPG_PRIVATE_KEY }}"
 
-      - name: Add server to known_hosts  # Step : Add known_hosts.
-        env:  # Env.
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}  # Host secret.
-          SERVER_SSH_PORT: ${{ secrets.SERVER_SSH_PORT }}  # Port secret.
-        run: |  # Commande multi-ligne.
-          mkdir -p ~/.ssh  # Crée .ssh.
-          ssh-keyscan -p ${SERVER_SSH_PORT} ${SERVER_HOST} >> ~/.ssh/known_hosts  # Scan key.
+      - name: 💾 Exécution de la sauvegarde
+        env:
+          SITE_URL: ${{ env.SITE_URL }}
+          BACKUP_DIR: ${{ env.BACKUP_DIR }}
+          GPG_RECIPIENT: ${{ env.GPG_RECIPIENT }}
+          RETENTION_DAYS: ${{ env.RETENTION_DAYS }}
+        run: python backup_script.py
 
-      - name: Backup remote wp-content  # Step : Backup remote.
-        env:  # Env.
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}  # Host.
-          SERVER_USER: ${{ secrets.SERVER_USER }}  # User.
-          SERVER_SSH_PORT: ${{ secrets.SERVER_SSH_PORT }}  # Port.
-          DEPLOY_PATH: /var/www/html  # Path.
-        run: |  # Commande.
-          ssh -p ${SERVER_SSH_PORT} ${SERVER_USER}@${SERVER_HOST} \  # SSH.
-            "cp -r ${DEPLOY_PATH}/wp-content ${DEPLOY_PATH}/wp-content-backup-$(date +%Y%m%d%H%M%S)"  # Backup wp-content.
+      - name: 📤 Archivage des sauvegardes
+        uses: actions/upload-artifact@v3
+        with:
+          name: wordpress-backup-${{ github.run_id }}
+          path: ${{ env.BACKUP_DIR }}/
+          retention-days: ${{ env.RETENTION_DAYS }}
 
-      - name: Deploy files (rsync delta)  # Step : Déploiement rsync.
-        env:  # Env.
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}  # Host.
-          SERVER_USER: ${{ secrets.SERVER_USER }}  # User.
-          SERVER_SSH_PORT: ${{ secrets.SERVER_SSH_PORT }}  # Port.
-          DEPLOY_PATH: /var/www/html  # Path.
-        run: |  # Commande.
-          rsync -avz --delete --partial --progress -e "ssh -p ${SERVER_SSH_PORT}" \  # Rsync options.
-            ./wp-content/ ${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/wp-content/  # Source/dest.
+  restore-staging:
+    runs-on: ubuntu-latest
+    needs: backup
+    if: github.event_name == 'workflow_dispatch' || github.event.inputs.restore-environment == 'staging'
+    environment: staging
+    
+    steps:
+      - name: 📥 Checkout du code
+        uses: actions/checkout@v4
 
-      - name: Run remote WP post-deploy checks (health & migrations)  # Step : Checks post-deploy.
-        env:  # Env.
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}  # Host.
-          SERVER_USER: ${{ secrets.SERVER_USER }}  # User.
-          SERVER_SSH_PORT: ${{ secrets.SERVER_SSH_PORT }}  # Port.
-        run: |  # Commande.
-          ssh -p ${SERVER_SSH_PORT} ${SERVER_USER}@${SERVER_HOST} \  # SSH.
-            "cd /var/www/html && wp core is-installed && wp cache flush && php -v"  # WP-CLI commands.
+      - name: 🐍 Configuration de Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Vérification HTTP post-déploiement  # Step : Check HTTP.
-        env:  # Env.
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}  # Host.
-        run: |  # Commande.
-          curl -f http://${SERVER_HOST}/ || exit 1  # Curl, fail si erreur.
+      - name: 📦 Installation des dépendances
+        run: pip install -r requirements.txt
 
-      - name: Notify Slack on success  # Step : Notify succès.
-        if: success()  # Si succès.
-        run: |  # Commande.
-          curl -X POST -H 'Content-type: application/json' \  # Curl POST.
-            --data "{\"text\":\"Déploiement sur production réussi : ${{ github.sha }}\"}" \  # Data JSON.
-            ${{ secrets.SLACK_WEBHOOK }}  # Webhook secret.
+      - name: 📥 Téléchargement des sauvegardes
+        uses: actions/download-artifact@v3
+        with:
+          name: wordpress-backup-${{ github.run_id }}
+          path: ${{ env.BACKUP_DIR }}
 
-      - name: Notify Slack on failure  # Step : Notify échec.
-        if: failure()  # Si échec.
-        run: |  # Commande.
-          curl -X POST -H 'Content-type: application/json' \  # Curl.
-            --data "{\"text\":\"Échec du déploiement sur production : ${{ github.sha }}\"}" \  # Data.
-            ${{ secrets.SLACK_WEBHOOK }}  # Webhook.
+      - name: 🔑 Configuration GPG
+        run: |
+          echo "${{ secrets.GPG_PASSPHRASE }}" > /tmp/passphrase
+          chmod 600 /tmp/passphrase
 
-      - name: Run deploy script  # Step : Run deploy.py.
-        run: python scripts/deploy.py  # Exécute script.
-        env:  # Env.
-          SSH_KEY_PATH: /home/runner/.ssh/id_rsa  # Path key.
-          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}  # Key secret.
-          # Ajoute ici les variables AWS si nécessaires :  # Comment pour AWS.
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS }}  # AWS key.
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET }}  # AWS secret.
+      - name: 🔄 Restauration sur staging
+        env:
+          BACKUP_DIR: ${{ env.BACKUP_DIR }}
+          RESTORE_DIR: ${{ env.RESTORE_DIR }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: python restore.py
 
-      - name: Post deployment check  # Step : Check post-deploy.
-        run: |  # Commande Python inline.
+      - name: 📊 Rapport de restauration
+        uses: actions/upload-artifact@v3
+        with:
+          name: restore-report-staging
+          path: ${{ env.RESTORE_DIR }}/
+
+  integration-test:
+    runs-on: ubuntu-latest
+    needs: restore-staging
+    environment: staging
+    
+    steps:
+      - name: 🧪 Tests d'intégration
+        run: |
+          # Tests de vérification que la restauration a fonctionné
           python -c "
-import requests  # Import requests.
-resp = requests.get('https://oupssecuretest.wordpress.com')  # GET site.
-exit(0 if resp.status_code == 200 else 1)  # Exit 0 si 200, else 1.
-"
+          import json
+          import os
+          report_path = os.path.join('${{ env.RESTORE_DIR }}', 'restore_report.json')
+          with open(report_path, 'r') as f:
+              report = json.load(f)
+          print(f'Rapport de restauration: {report}')
+          exit(0 if report['restored_items'] > 0 else 1)
+          "
+
+  notification:
+    runs-on: ubuntu-latest
+    needs: [backup, integration-test]
+    if: always()
+    
+    steps:
+      - name: 📱 Notification de statut
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Backup et restauration réussis"
+            # Ajouter notification WhatsApp/Email ici
+          else
+            echo "❌ Échec du processus"
+            # Ajouter notification d'erreur ici
+          fi

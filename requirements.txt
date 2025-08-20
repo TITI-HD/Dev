@@ -2,3 +2,9 @@ requests
 beautifulsoup4
 requests==2.31.0
 twilio==8.10.0
+requests==2.31.0
+twilio==8.10.0
+beautifulsoup4==4.12.2
+cryptography==41.0.7
+python-dotenv==1.0.0
+gnupg

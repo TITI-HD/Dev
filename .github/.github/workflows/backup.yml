@@ -1,0 +1,46 @@
+name: 🔄 Sauvegarde Automatisée WordPress.com
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Tous les jours à 2h du matin
+  workflow_dispatch:  # Déclenchement manuel
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+      - name: 📥 Checkout du code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Configuration de Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 📦 Installation des dépendances
+        run: pip install requests
+
+      - name: 💾 Exécution de la sauvegarde
+        env:
+          SITE_URL: ${{ vars.SITE_URL || 'https://oupssecuretest.wordpress.com' }}
+          BACKUP_DIR: ${{ vars.BACKUP_DIR || 'backups' }}
+        run: python backup_script.py
+
+      - name: 📤 Archivage des sauvegardes
+        uses: actions/upload-artifact@v3
+        with:
+          name: wordpress-backup-${{ github.run_id }}
+          path: backups/
+          retention-days: 7
+
+      - name: 📨 Notification de statut
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Sauvegarde terminée avec succès"
+          else
+            echo "❌ Échec de la sauvegarde"
+          fi
