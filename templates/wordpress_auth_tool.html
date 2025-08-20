@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guide et Testeur d'authentification WordPress</title>
+    <style>
+        :root {
+            --primary: #3498db;
+            --primary-dark: #2980b9;
+            --secondary: #2ecc71;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --dark: #2c3e50;
+            --light: #ecf0f1;
+            --gray: #95a5a6;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        
+        header {
+            background: var(--dark);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .main-tab-container {
+            display: flex;
+            background: var(--light);
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .main-tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            text-align: center;
+            flex: 1;
+        }
+        
+        .main-tab:hover {
+            background: rgba(52, 152, 219, 0.1);
+        }
+        
+        .main-tab.active {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .main-tab-content {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+        
+        .main-tab-content.active {
+            display: block;
+        }
+        
+        /* Styles pour l'onglet Guide */
+        .tab-container {
+            display: flex;
+            background: var(--light);
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 12px 20px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        
+        .tab:hover {
+            background: rgba(52, 152, 219, 0.1);
+        }
+        
+        .tab.active {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        h2 {
+            color: var(--dark);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--light);
+        }
+        
+        h3 {
+            color: var(--primary-dark);
+            margin: 25px 0 15px 0;
+        }
+        
+        p {
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        
+        .step {
+            display: flex;
+            margin-bottom: 25px;
+            align-items: flex-start;
+        }
+        
+        .step-number {
+            background: var(--primary);
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            flex-shrink: 0;
+            font-weight: bold;
+        }
+        
+        .step-content {
+            flex: 1;
+        }
+        
+        .info-box {
+            background: #e8f4fc;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid var(--primary);
+        }
+        
+        .warning-box {
+            background: #fef5e7;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid var(--warning);
+        }
+        
+        .danger-box {
+            background: #fdecea;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid var(--danger);
+        }
+        
+        .success-box {
+            background: #eafaf1;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid var(--secondary);
+        }
+        
+        /* Styles pour l'onglet Testeur */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border 0.3s;
+        }
+        
+        input:focus, select:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+        
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .help-button {
+            background: var(--warning);
+            margin-left: 10px;
+        }
+        
+        .help-button:hover {
+            background: #e67e22;
+        }
+        
+        .progress-container {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 10px;
+            background-color: var(--primary);
+            border-radius: 10px;
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+        
+        .status-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        
+        .status-item {
+            text-align: center;
+            flex: 1;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 0 5px;
+            background: #f8f9fa;
+        }
+        
+        .status-item.active {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .status-item.completed {
+            background: var(--secondary);
+            color: white;
+        }
+        
+        .result-container {
+            display: none;
+            margin-top: 30px;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .result-content {
+            padding: 20px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .response {
+            white-space: pre-wrap;
+            font-family: monospace;
+            line-height: 1.5;
+        }
+        
+        .success-result {
+            border-left: 5px solid var(--secondary);
+        }
+        
+        .error-result {
+            border-left: 5px solid var(--danger);
+        }
+        
+        .use-case {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        
+        .use-case h4 {
+            color: var(--primary);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .use-case-icon {
+            margin-right: 10px;
+            color: var(--primary);
+        }
+        
+        .steps {
+            margin-top: 40px;
+        }
+        
+        .code-block {
+            background: var(--dark);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: monospace;
+        }
+        
+        .copy-btn {
+            background: #7f8c8d;
+            padding: 8px 12px;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .main-tab-container, .tab-container {
+                flex-direction: column;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .step {
+                flex-direction: column;
+            }
+            
+            .step-number {
+                margin-bottom: 10px;
+            }
+            
+            .status-container {
+                flex-direction: column;
+            }
+            
+            .status-item {
+                margin: 5px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Outil d'authentification WordPress</h1>
+            <p class="subtitle">Guide complet et testeur pour l'API WordPress</p>
+        </header>
+        
+        <div class="main-tab-container">
+            <div class="main-tab active" onclick="openMainTab('guide')">Guide</div>
+            <div class="main-tab" onclick="openMainTab('tester')">Testeur d'authentification</div>
+        </div>
+        
+        <div class="content">
+            <div id="guide" class="main-tab-content active">
+                <div class="tab-container">
+                    <div class="tab active" onclick="openGuideTab('credentials')">Obtenir ses identifiants</div>
+                    <div class="tab" onclick="openGuideTab('purpose')">Utilité du test</div>
+                </div>
+                
+                <div id="credentials" class="tab-content active">
+                    <h2>Comment obtenir son nom d'utilisateur et mot de passe d'application</h2>
+                    
+                    <div class="info-box">
+                        <p>Pour vous connecter à l'API WordPress, vous avez besoin d'un nom d'utilisateur et d'un mot de passe d'application (App Password).</p>
+                    </div>
+                    
+                    <h3>Pour WordPress.com</h3>
+                    
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <p>Connectez-vous à votre compte WordPress.com et allez dans votre <strong>Tableau de bord</strong>.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <p>Allez dans <strong>Mon profil</strong> puis dans l'onglet <strong>Sécurité</strong>.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <p>Descendez jusqu'à la section <strong>Mots de passe d'application</strong>.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <p>Donnez un nom à votre application (ex: "Sauvegarde API") et cliquez sur <strong>Ajouter</strong>.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step">
+                        <div class="step-number">5</div>
+                        <div class="step-content">
+                            <p>Copiez le mot de passe d'application qui s'affiche. <strong>Notez-le dans un endroit sûr, car vous ne pourrez plus le voir ultérieurement.</strong></p>
+                        </div>
+                    </div>
+                    
+                    <div class="warning-box">
+                        <p><strong>Attention :</strong> Le mot de passe d'application est différent de votre mot de passe principal. Il est conçu spécifiquement pour les applications tierces.</p>
+                    </div>
+                    
+                    <h3>Pour WordPress auto-hébergé</h3>
+                    
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <p>Connectez-vous à l'administration de votre site WordPress.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <p>Allez dans <strong>Utilisateurs → Votre profil</strong>.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <p>Descendez jusqu'à la section <strong>Mots de passe d'application</strong>.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <p>Donnez un nom à votre application et cliquez sur <strong>Ajouter un nouveau mot de passe d'application</strong>.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step">
+                        <div class="step-number">5</div>
+                        <div class="step-content">
+                            <p>Copiez le mot de passe qui s'affiche. <strong>Notez-le dans un endroit sûr.</strong></p>
+                        </div>
+                    </div>
+                    
+                    <div class="info-box">
+                        <p>Votre nom d'utilisateur est simplement votre identifiant WordPress habituel. Utilisez-le avec le mot de passe d'application que vous venez de générer.</p>
+                    </div>
+                </div>
+                
+                <div id="purpose" class="tab-content">
+                    <h2>À quoi sert le test d'authentification dans votre projet</h2>
+                    
+                    <div class="info-box">
+                        <p>Le test d'authentification WordPress est une étape cruciale pour vérifier que votre application peut communiquer correctement avec l'API WordPress.</p>
+                    </div>
+                    
+                    <h3>Pourquoi c'est important</h3>
+                    
+                    <div class="use-case">
+                        <h4><span class="use-case-icon">🔒</span> Vérification de la sécurité</h4>
+                        <p>Le test permet de s'assurer que vos identifiants sont corrects et que vous avez les permissions nécessaires pour accéder aux données.</p>
+                    </div>
+                    
+                    <div class="use-case">
+                        <h4><span class="use-case-icon">🛠️</span> Dépannage des problèmes de connexion</h4>
+                        <p>Si votre application ne parvient pas à récupérer les données, le test d'authentification vous aide à identifier la source du problème (identifiants incorrects, URL erronée, etc.).</p>
+                    </div>
+                    
+                    <div class="use-case">
+                        <h4><span class="use-case-icon">📊</span> Validation des endpoints API</h4>
+                        <p>Vous pouvez tester différents endpoints (posts, pages, utilisateurs) pour vous assurer qu'ils répondent correctement.</p>
+                    </div>
+                    
+                    <div class="use-case">
+                        <h4><span class="use-case-icon">⚙️</span> Configuration initiale</h4>
+                        <p>Avant de développer votre application, le test vous permet de vérifier que tout est correctement configuré.</p>
+                    </div>
+                    
+                    <h3>Cas d'utilisation dans votre projet</h3>
+                    
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <p><strong>Sauvegarde de données :</strong> Vérifiez que vous pouvez accéder aux posts et pages pour les sauvegarder.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <p><strong>Synchronisation :</strong> Testez la connexion avant de configurer une synchronisation régulière avec une application externe.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <p><strong>Migration :</strong> Assurez-vous que l'API est accessible avant de tenter une migration de contenu.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <p><strong>Développement :</strong> Utilisez le test pendant le développement pour déboguer les problèmes d'accès à l'API.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="success-box">
+                        <p>En résumé, le test d'authentification vous évite des heures de débogage en vérifiant d'abord que la connexion de base fonctionne correctement.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="tester" class="main-tab-content">
+                <h2>Testeur d'authentification WordPress</h2>
+                
+                <div class="progress-container">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+                
+                <div class="status-container">
+                    <div class="status-item active" id="statusConfig">
+                        Configuration
+                    </div>
+                    <div class="status-item" id="statusTest">
+                        Test de connexion
+                    </div>
+                    <div class="status-item" id="statusResult">
+                        Résultats
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="siteUrl">URL de votre site WordPress:</label>
+                    <input type="url" id="siteUrl" placeholder="https://example.com" value="https://oupssecuretest.wordpress.com">
+                </div>
+                
+                <div class="form-group">
+                    <label for="username">Nom d'utilisateur:</label>
+                    <input type="text" id="username" placeholder="Votre nom d'utilisateur">
+                </div>
+                
+                <div class="form-group">
+                    <label for="appPassword">Mot de passe d'application:</label>
+                    <div style="display: flex;">
+                        <input type="password" id="appPassword" placeholder="Votre mot de passe d'application" style="flex: 1;">
+                        <button class="help-button" onclick="openMainTab('guide')">Aide</button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="endpoint">Endpoint à tester:</label>
+                    <select id="endpoint">
+                        <option value="/wp-json/wp/v2/posts">Posts</option>
+                        <option value="/wp-json/wp/v2/pages">Pages</option>
+                        <option value="/wp-json/wp/v2/users">Utilisateurs</option>
+                        <option value="/wp-json/wp/v2/categories">Catégories</option>
+                    </select>
+                </div>
+                
+                <button onclick="testConnection()" id="testBtn">Tester la connexion</button>
+                
+                <div class="result-container" id="resultContainer">
+                    <div class="result-header">
+                        <h3 id="resultTitle">Résultats du test</h3>
+                        <span id="resultStatus"></span>
+                    </div>
+                    
+                    <div class="result-content" id="resultContent">
+                        <div class="response" id="apiResponse"></div>
+                    </div>
+                    
+                    <div id="nextSteps" class="steps hidden">
+                        <h3>Prochaines étapes</h3>
+                        
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <div class="step-title">Intégrez le code dans votre application</div>
+                                <p>Utilisez cet exemple de code pour vous connecter à l'API WordPress:</p>
+                                <div class="code-block" id="codeExample"></div>
+                                <button class="copy-btn" onclick="copyCode()">Copier le code</button>
+                            </div>
+                        </div>
+                        
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <div class="step-title">Automatisez vos sauvegardes</div>
+                                <p>Configurez un script régulier pour sauvegarder vos données WordPress.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <div class="step-title">Explorez d'autres endpoints</div>
+                                <p>L'API WordPress offre de nombreuses possibilités pour interagir avec votre site.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Gestion des onglets principaux
+        function openMainTab(tabName) {
+            // Cacher tous les contenus d'onglets principaux
+            const tabcontents = document.getElementsByClassName('main-tab-content');
+            for (let i = 0; i < tabcontents.length; i++) {
+                tabcontents[i].classList.remove('active');
+            }
+            
+            // Désactiver tous les boutons d'onglets principaux
+            const tablinks = document.getElementsByClassName('main-tab');
+            for (let i = 0; i < tablinks.length; i++) {
+                tablinks[i].classList.remove('active');
+            }
+            
+            // Afficher l'onglet actuel et marquer le bouton comme actif
+            document.getElementById(tabName).classList.add('active');
+            event.currentTarget.classList.add('active');
+            
+            // Si on ouvre le guide, on active le premier onglet du guide
+            if (tabName === 'guide') {
+                openGuideTab('credentials');
+            }
+        }
+        
+        // Gestion des onglets du guide
+        function openGuideTab(tabName) {
+            // Cacher tous les contenus d'onglets du guide
+            const tabcontents = document.querySelectorAll('#guide .tab-content');
+            for (let i = 0; i < tabcontents.length; i++) {
+                tabcontents[i].classList.remove('active');
+            }
+            
+            // Désactiver tous les boutons d'onglets du guide
+            const tablinks = document.querySelectorAll('#guide .tab');
+            for (let i = 0; i < tablinks.length; i++) {
+                tablinks[i].classList.remove('active');
+            }
+            
+            // Afficher l'onglet actuel et marquer le bouton comme actif
+            document.getElementById(tabName).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+        
+        // Fonctions pour le testeur
+        function updateProgress(percent) {
+            document.getElementById('progressBar').style.width = percent + '%';
+        }
+        
+        function updateStatus(step) {
+            document.getElementById('statusConfig').classList.remove('active', 'completed');
+            document.getElementById('statusTest').classList.remove('active', 'completed');
+            document.getElementById('statusResult').classList.remove('active', 'completed');
+            
+            if (step >= 1) {
+                document.getElementById('statusConfig').classList.add('completed');
+            }
+            if (step >= 2) {
+                document.getElementById('statusTest').classList.add('completed');
+            }
+            if (step >= 3) {
+                document.getElementById('statusResult').classList.add('completed');
+            }
+            
+            if (step === 1) {
+                document.getElementById('statusConfig').classList.add('active');
+            } else if (step === 2) {
+                document.getElementById('statusTest').classList.add('active');
+            } else if (step === 3) {
+                document.getElementById('statusResult').classList.add('active');
+            }
+        }
+        
+       function testConnection() {
+    const siteUrl = document.getElementById('siteUrl').value;
+    const username = document.getElementById('username').value;
+    const appPassword = document.getElementById('appPassword').value;
+    const endpoint = document.getElementById('endpoint').value;
+    
+    if (!siteUrl || !username || !appPassword) {
+        alert('Veuillez remplir tous les champs requis');
+        return;
+    }
+    
+    // Mise à jour de la progression
+    updateProgress(50);
+    updateStatus(2);
+    
+    // Désactiver le bouton pendant le test
+    document.getElementById('testBtn').disabled = true;
+    
+    // Envoyer la requête à notre endpoint Flask
+    fetch('/test-wordpress-auth', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            siteUrl: siteUrl,
+            username: username,
+            appPassword: appPassword,
+            endpoint: endpoint
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showResult(true, data.message, data.data);
+            updateProgress(100);
+            updateStatus(3);
+        } else {
+            showResult(false, data.message);
+            updateProgress(100);
+            updateStatus(3);
+        }
+    })
+    .catch(error => {
+        showResult(false, `Erreur: ${error.message}`);
+        updateProgress(100);
+        updateStatus(3);
+    })
+    .finally(() => {
+        document.getElementById('testBtn').disabled = false;
+    });
+} 
+        function showResult(success, message, data = null) {
+            const resultContainer = document.getElementById('resultContainer');
+            const resultTitle = document.getElementById('resultTitle');
+            const resultStatus = document.getElementById('resultStatus');
+            const resultContent = document.getElementById('resultContent');
+            const apiResponse = document.getElementById('apiResponse');
+            const nextSteps = document.getElementById('nextSteps');
+            
+            // Afficher le conteneur de résultats
+            resultContainer.style.display = 'block';
+            
+            // Mettre à jour le titre et le statut
+            resultTitle.textContent = success ? 'Connexion réussie!' : 'Échec de la connexion';
+            
+            if (success) {
+                resultStatus.innerHTML = '<span style="color: #2ecc71;">Réussi</span>';
+                resultContent.className = 'result-content success-result';
+                nextSteps.classList.remove('hidden');
+                
+                // Afficher la réponse de l'API
+                apiResponse.textContent = JSON.stringify(data, null, 2);
+                
+                // Générer l'exemple de code
+                generateCodeExample();
+            } else {
+                resultStatus.innerHTML = '<span style="color: #e74c3c;">Échoué</span>';
+                resultContent.className = 'result-content error-result';
+                nextSteps.classList.add('hidden');
+                
+                // Afficher le message d'erreur
+                apiResponse.textContent = message;
+            }
+            
+            // Scroll to results
+            resultContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function generateCodeExample() {
+            const siteUrl = document.getElementById('siteUrl').value;
+            const username = document.getElementById('username').value;
+            const appPassword = document.getElementById('appPassword').value;
+            const endpoint = document.getElementById('endpoint').value;
+            
+            const code = `// Connexion à l'API WordPress avec JavaScript
+const username = '${username}';
+const password = '${appPassword}';
+const credentials = btoa(\`\${username}:\${password}\`);
+
+fetch('${siteUrl}${endpoint}', {
+    headers: {
+        'Authorization': \`Basic \${credentials}\`
+    }
+})
+.then(response => response.json())
+.then(data => {
+    console.log('Données récupérées:', data);
+    // Traitez vos données ici
+})
+.catch(error => {
+    console.error('Erreur:', error);
+});`;
+            
+            document.getElementById('codeExample').textContent = code;
+        }
+        
+        function copyCode() {
+            const codeExample = document.getElementById('codeExample');
+            const textArea = document.createElement('textarea');
+            textArea.value = codeExample.textContent;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            alert('Code copié dans le presse-papier!');
+        }
+        
+        // Initialisation
+        updateProgress(25);
+        updateStatus(1);
+    </script>
+</body>
+</html>
