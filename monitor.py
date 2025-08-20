@@ -1,4 +1,4 @@
-timport os
+import os
 import smtplib
 import requests
 import difflib
