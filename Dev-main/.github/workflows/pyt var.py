@@ -1,3 +1,0 @@
-env:
-  PYTHON_VERSION: ${{ vars.PYTHON_VERSION }}
-  DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
