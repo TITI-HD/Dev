@@ -28,7 +28,7 @@ jobs:
           bandit -r . -f html -o security-report.html || true
 
       - name: 📊 Upload du rapport de sécurité
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4  # Changé de v3 à v4
         with:
           name: security-report
           path: security-report.html
@@ -48,7 +48,7 @@ jobs:
           python-version: '3.11'
 
       - name: 📦 Installation des dépendances
-        run: pip install requests twilio
+        run: pip install requests twilio python-gnupg  # Ajout de python-gnupg
 
       - name: 🚀 Exécution de la surveillance
         env:
@@ -79,12 +79,12 @@ jobs:
           python-version: '3.11'
 
       - name: 📦 Installation des dépendances
-        run: pip install requests
+        run: pip install requests python-gnupg  # Ajout de python-gnupg
 
       - name: 💾 Exécution de la sauvegarde
         env:
           SITE_URL: ${{ vars.SITE_URL }}
-        run: python backup_script.py
+        run: python backup.py  # Changé de backup_script.py à backup.py
 
       - name: 📤 Archivage des sauvegardes
         uses: actions/upload-artifact@v4
@@ -92,4 +92,4 @@ jobs:
           name: wordpress-backup-${{ github.run_id }}
           path: backups/
           retention-days: 7
-  
+          if-no-files-found: error
