@@ -1,5 +1,3 @@
-# Recréez test_load.py correctement
-$testLoadContent = @'
 import requests
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -38,10 +36,3 @@ if __name__ == "__main__":
     import sys
     url = sys.argv[1] if len(sys.argv) > 1 else "https://httpbin.org/get"
     test_site(url)
-'@
-
-Set-Content -Path "test_load.py" -Value $testLoadContent -Encoding UTF8
-
-# Exécutez les tests
-python -m unittest test_notifications.py
-python test_load.py https://httpbin.org/get

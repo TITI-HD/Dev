@@ -159,4 +159,71 @@ jobs:
           else
             echo "❌ Échec du processus"
             # Ajouter notification d'erreur ici
-          fi
+          finame: 🛡️ CI/CD WordPress.com
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Toutes les 6 heures
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: '3.11'
+  SITE_URL: ${{ vars.SITE_URL }}
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run Bandit security scan
+        run: bandit -r . -f html -o security-report.html
+
+  monitor:
+    runs-on: ubuntu-latest
+    needs: security-scan
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run monitoring
+        env:
+          SITE_URL: ${{ env.SITE_URL }}
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_WHATSAPP_FROM: ${{ secrets.TWILIO_WHATSAPP_FROM }}
+          TWILIO_WHATSAPP_TO: ${{ secrets.TWILIO_WHATSAPP_TO }}
+        run: python monitor.py
+
+  backup:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run backup
+        env:
+          SITE_URL: ${{ env.SITE_URL }}
+        run: python backup_script.py
+      - name: Upload backup artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: wordpress-backup
+          path: backups/

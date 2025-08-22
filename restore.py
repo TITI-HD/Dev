@@ -38,8 +38,9 @@ def decrypt_file(filepath, passphrase):
 def find_latest_backup(backup_type):
     """Trouve la sauvegarde la plus récente d'un type donné"""
     backups = []
+    backup_path = Path(BACKUP_DIR)
     
-    for item in Path(BACKUP_DIR).iterdir():
+    for item in backup_path.iterdir():
         if item.is_file() and item.name.startswith(backup_type) and not item.name.endswith('.meta.json'):
             # Extraire la date du nom de fichier
             try:
@@ -60,10 +61,11 @@ def find_latest_backup(backup_type):
 
 def restore_backup(backup_file, target_dir):
     """Restaure une sauvegarde"""
-    os.makedirs(target_dir, exist_ok=True)
+    target_dir_path = Path(target_dir)
+    os.makedirs(target_dir_path, exist_ok=True)
     
     # Vérifier les métadonnées
-    meta_file = Path(backup_file + '.meta.json')
+    meta_file = backup_file.with_suffix(backup_file.suffix + '.meta.json')
     if meta_file.exists():
         with open(meta_file, 'r') as f:
             metadata = json.load(f)
@@ -74,23 +76,61 @@ def restore_backup(backup_file, target_dir):
     working_file = decrypt_file(str(backup_file), GPG_PASSPHRASE)
     
     # Copier le fichier dans le répertoire de restauration
-    shutil.copy2(working_file, target_dir)
+    shutil.copy2(working_file, target_dir_path)
     
     # Nettoyer les fichiers temporaires
-    if working_file != backup_file:
+    if working_file != str(backup_file):
         os.remove(working_file)
     
     print(f"✅ Restauré: {backup_file.name} -> {target_dir}")
+
+def find_latest_backup(backup_type):
+    """Trouve la sauvegarde la plus récente d'un type donné"""
+    backups = []
+    backup_path = Path(BACKUP_DIR)
+    
+    for item in backup_path.iterdir():
+        # Chercher les fichiers avec différentes extensions
+        if (item.is_file() and 
+            item.name.startswith(backup_type + '_') and 
+            not item.name.endswith('.meta.json') and
+            (item.name.endswith('.html') or item.name.endswith('.xml') or 
+             item.name.endswith('.json') or item.name.endswith('.gz'))):
+            
+            # Extraire la date du nom de fichier
+            try:
+                stem = item.stem
+                # Gérer les différentes extensions
+                if stem.endswith('.html'):
+                    stem = stem[:-5]  # Enlever .html
+                elif stem.endswith('.xml'):
+                    stem = stem[:-4]  # Enlever .xml
+                
+                parts = stem.split('_')
+                if len(parts) >= 3:  # Format: type_YYYYMMDD_HHMMSS
+                    file_date_str = f"{parts[-2]}_{parts[-1]}"
+                    file_date = datetime.strptime(file_date_str, "%Y%m%d_%H%M%S")
+                    backups.append((file_date, item))
+            except (ValueError, IndexError):
+                continue
+    
+    if not backups:
+        return None
+        
+    # Retourner la plus récente
+    backups.sort(key=lambda x: x[0], reverse=True)
+    return backups[0][1]
 
 def main():
     """Fonction principale de restauration"""
     print("🔄 Démarrage de la restauration")
     
     # Créer le répertoire de restauration
-    os.makedirs(RESTORE_DIR, exist_ok=True)
+    restore_path = Path(RESTORE_DIR)
+    os.makedirs(restore_path, exist_ok=True)
     
     # Types de sauvegardes à restaurer
-    backup_types = ['homepage', 'rss', 'comments', 'api_posts', 'api_pages', 'export']
+    backup_types = ['homepage', 'rss', 'comments', 'export']
     
     restored_count = 0
     
@@ -99,10 +139,10 @@ def main():
         
         if latest_backup:
             try:
-                target_path = os.path.join(RESTORE_DIR, backup_type)
+                target_path = restore_path / backup_type
                 os.makedirs(target_path, exist_ok=True)
                 
-                restore_backup(latest_backup, target_path)
+                restore_backup(latest_backup, str(target_path))
                 restored_count += 1
                 print(f"✅ {backup_type} restauré")
             except Exception as e:
@@ -121,7 +161,8 @@ def main():
         "restore_dir": RESTORE_DIR
     }
     
-    with open(os.path.join(RESTORE_DIR, "restore_report.json"), "w") as f:
+    report_path = restore_path / "restore_report.json"
+    with open(report_path, "w") as f:
         json.dump(report, f, indent=2)
     
     return restored_count > 0
