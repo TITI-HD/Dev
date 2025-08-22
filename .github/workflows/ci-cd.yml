@@ -87,7 +87,7 @@ jobs:
         run: python backup_script.py
 
       - name: 📤 Archivage des sauvegardes
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wordpress-backup-${{ github.run_id }}
           path: backups/
