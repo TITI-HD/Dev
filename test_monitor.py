@@ -6,9 +6,13 @@ import os
 sys.path.append('.')
 
 import monitor
+<<<<<<< HEAD
 import requests
 url = "https://oupssecuretest.wordpress.com/wp-json/wp/v2/posts"
 response = requests.get(url)
+=======
+
+>>>>>>> f187b1211e2b27bf3d01b368312f0f2bba2b0874
 class TestMonitor(unittest.TestCase):
     
     @patch('monitor.requests.get')
@@ -41,6 +45,7 @@ class TestMonitor(unittest.TestCase):
         self.assertFalse(result)
         mock_alert.assert_called_once()
 
+<<<<<<< HEAD
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 
@@ -82,5 +87,7 @@ def wordpress_auth_tool():
 if __name__ == '__main__':
     app.run(port=8000)
 
+=======
+>>>>>>> f187b1211e2b27bf3d01b368312f0f2bba2b0874
 if __name__ == '__main__':
     unittest.main()

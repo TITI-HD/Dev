@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 name: 🛡️ CI/CD Complet WordPress.com
 
 on:
@@ -227,3 +228,133 @@ jobs:
         with:
           name: wordpress-backup
           path: backups/
+=======
+name: CI/CD Pipeline WordPress  # Nom du workflow : Pipeline CI/CD pour WordPress.
+
+on:  # Triggers du workflow.
+  push:  # Sur push.
+    branches:  # Sur branches.
+      - main  # Main.
+  pull_request:  # Sur PR.
+    branches:  # Vers branches.
+      - main  # Main.
+
+jobs:  # Jobs du workflow.
+  build-and-test:  # Job pour build et tests.
+    runs-on: ubuntu-latest  # Run sur Ubuntu latest.
+
+    steps:  # Steps du job.
+      - name: Checkout code  # Step : Checkout.
+        uses: actions/checkout@v4  # Utilise action v4.
+
+      - name: Setup Python 3.12  # Step : Setup Python.
+        uses: actions/setup-python@v4  # Action v4.
+        with:  # Params.
+          python-version: '3.12'  # Version Python.
+          cache: 'pip'  # Cache pip.
+
+      - name: Install dependencies  # Step : Install deps.
+        run: pip install -r requirements.txt  # Commande pip.
+
+      - name: Run security scan  # Step : Run scan.
+        run: python scripts/security_monitor.py --monitor &  # Exécute script (note : & pour background ?).
+        env:  # Env vars.
+          CONFIG_FILE: config/production.ini  # Fichier config.
+          WPSCAN_API: ${{ secrets.WPSCAN_API }}  # Secret WPScan.
+
+      - name: Run unit tests (à compléter selon projet)  # Step : Tests (placeholder).
+        run: echo "Tests unitaires à définir"  # Echo placeholder.
+
+  deploy:  # Job pour déploiement.
+    needs: build-and-test  # Dépend de build-and-test.
+    if: github.ref == 'refs/heads/main'  # Si sur main.
+    runs-on: ubuntu-latest  # Ubuntu.
+    environment: production  # Env production.
+
+    steps:  # Steps.
+      - name: Checkout code  # Checkout.
+        uses: actions/checkout@v4  # v4.
+
+      - name: Setup Python 3.12  # Setup Python.
+        uses: actions/setup-python@v4  # v4.
+        with:  # Params.
+          python-version: '3.12'  # Version.
+          cache: 'pip'  # Cache.
+
+      - name: Install dependencies  # Install deps.
+        run: pip install -r requirements.txt  # Pip.
+
+      - name: Add server to known_hosts  # Step : Add known_hosts.
+        env:  # Env.
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}  # Host secret.
+          SERVER_SSH_PORT: ${{ secrets.SERVER_SSH_PORT }}  # Port secret.
+        run: |  # Commande multi-ligne.
+          mkdir -p ~/.ssh  # Crée .ssh.
+          ssh-keyscan -p ${SERVER_SSH_PORT} ${SERVER_HOST} >> ~/.ssh/known_hosts  # Scan key.
+
+      - name: Backup remote wp-content  # Step : Backup remote.
+        env:  # Env.
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}  # Host.
+          SERVER_USER: ${{ secrets.SERVER_USER }}  # User.
+          SERVER_SSH_PORT: ${{ secrets.SERVER_SSH_PORT }}  # Port.
+          DEPLOY_PATH: /var/www/html  # Path.
+        run: |  # Commande.
+          ssh -p ${SERVER_SSH_PORT} ${SERVER_USER}@${SERVER_HOST} \  # SSH.
+            "cp -r ${DEPLOY_PATH}/wp-content ${DEPLOY_PATH}/wp-content-backup-$(date +%Y%m%d%H%M%S)"  # Backup wp-content.
+
+      - name: Deploy files (rsync delta)  # Step : Déploiement rsync.
+        env:  # Env.
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}  # Host.
+          SERVER_USER: ${{ secrets.SERVER_USER }}  # User.
+          SERVER_SSH_PORT: ${{ secrets.SERVER_SSH_PORT }}  # Port.
+          DEPLOY_PATH: /var/www/html  # Path.
+        run: |  # Commande.
+          rsync -avz --delete --partial --progress -e "ssh -p ${SERVER_SSH_PORT}" \  # Rsync options.
+            ./wp-content/ ${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/wp-content/  # Source/dest.
+
+      - name: Run remote WP post-deploy checks (health & migrations)  # Step : Checks post-deploy.
+        env:  # Env.
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}  # Host.
+          SERVER_USER: ${{ secrets.SERVER_USER }}  # User.
+          SERVER_SSH_PORT: ${{ secrets.SERVER_SSH_PORT }}  # Port.
+        run: |  # Commande.
+          ssh -p ${SERVER_SSH_PORT} ${SERVER_USER}@${SERVER_HOST} \  # SSH.
+            "cd /var/www/html && wp core is-installed && wp cache flush && php -v"  # WP-CLI commands.
+
+      - name: Vérification HTTP post-déploiement  # Step : Check HTTP.
+        env:  # Env.
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}  # Host.
+        run: |  # Commande.
+          curl -f http://${SERVER_HOST}/ || exit 1  # Curl, fail si erreur.
+
+      - name: Notify Slack on success  # Step : Notify succès.
+        if: success()  # Si succès.
+        run: |  # Commande.
+          curl -X POST -H 'Content-type: application/json' \  # Curl POST.
+            --data "{\"text\":\"Déploiement sur production réussi : ${{ github.sha }}\"}" \  # Data JSON.
+            ${{ secrets.SLACK_WEBHOOK }}  # Webhook secret.
+
+      - name: Notify Slack on failure  # Step : Notify échec.
+        if: failure()  # Si échec.
+        run: |  # Commande.
+          curl -X POST -H 'Content-type: application/json' \  # Curl.
+            --data "{\"text\":\"Échec du déploiement sur production : ${{ github.sha }}\"}" \  # Data.
+            ${{ secrets.SLACK_WEBHOOK }}  # Webhook.
+
+      - name: Run deploy script  # Step : Run deploy.py.
+        run: python scripts/deploy.py  # Exécute script.
+        env:  # Env.
+          SSH_KEY_PATH: /home/runner/.ssh/id_rsa  # Path key.
+          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}  # Key secret.
+          # Ajoute ici les variables AWS si nécessaires :  # Comment pour AWS.
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS }}  # AWS key.
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET }}  # AWS secret.
+
+      - name: Post deployment check  # Step : Check post-deploy.
+        run: |  # Commande Python inline.
+          python -c "
+import requests  # Import requests.
+resp = requests.get('https://oupssecuretest.wordpress.com')  # GET site.
+exit(0 if resp.status_code == 200 else 1)  # Exit 0 si 200, else 1.
+"
+>>>>>>> f187b1211e2b27bf3d01b368312f0f2bba2b0874

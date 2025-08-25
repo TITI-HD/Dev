@@ -1,6 +1,7 @@
 requests
 beautifulsoup4
 requests==2.31.0
+<<<<<<< HEAD
 twilio==8.10.0
 requests==2.31.0
 twilio==8.10.0
@@ -16,3 +17,6 @@ cryptography==41.0.7
 python-dotenv==1.0.0
 gnupg
 bandit
+=======
+twilio==8.10.0
+>>>>>>> f187b1211e2b27bf3d01b368312f0f2bba2b0874

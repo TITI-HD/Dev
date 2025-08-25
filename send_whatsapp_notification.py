@@ -5,8 +5,12 @@
 Script de surveillance WordPress
 # Docstring décrivant le but global du script : surveiller des sites WordPress.
 """
+<<<<<<< HEAD
 from twilio.rest import Client
 import os
+=======
+
+>>>>>>> f187b1211e2b27bf3d01b368312f0f2bba2b0874
 import requests  # Importe la bibliothèque requests pour les requêtes HTTP.
 import time  # Importe time pour des delays potentiels (non utilisé ici).
 from send_whatsapp_notification import send_whatsapp_notification  # Importe la fonction d'envoi WhatsApp (définie ailleurs).
@@ -52,6 +56,7 @@ def main():  # Fonction principale du script.
             is_success=False  # Flag pour échec.
         )
 
+<<<<<<< HEAD
 
 
 def send_whatsapp_notification(message, is_success=True):
@@ -76,5 +81,7 @@ def send_whatsapp_notification(message, is_success=True):
         print(f"Erreur d'envoi WhatsApp: {e}")
         return False
 
+=======
+>>>>>>> f187b1211e2b27bf3d01b368312f0f2bba2b0874
 if __name__ == "__main__":  # Vérifie si le script est exécuté directement.
     main()  # Appelle la fonction main.

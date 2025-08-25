@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 name: 🛡️ CI/CD WordPress.com
 
 on:
@@ -93,3 +94,51 @@ jobs:
           path: backups/
           retention-days: 7
           if-no-files-found: error
+=======
+name: 🛡️ Surveillance WordPress  # Nom : Surveillance WordPress.
+
+on:  # Triggers.
+  schedule:  # Planifié.
+    - cron: '0 */6 * * *'  # Toutes les 6 heures.
+  workflow_dispatch:  # Manuel.
+
+jobs:  # Jobs.
+  monitor:  # Job monitor.
+    runs-on: ubuntu-latest  # Ubuntu.
+    
+    steps:  # Steps.
+      - name: 📥 Récupération du dépôt  # Step : Checkout.
+        uses: actions/checkout@v3  # v3 (note : plus ancien que v4).
+
+      - name: 🐍 Installer Python  # Step : Setup Python.
+        uses: actions/setup-python@v4  # v4.
+        with:  # Params.
+          python-version: "3.11"  # Version 3.11.
+
+      - name: 📦 Installer les dépendances  # Step : Install deps.
+        run: |  # Commandes multi.
+          python -m pip install --upgrade pip  # Upgrade pip.
+          pip install requests twilio  # Install spécifiques (pas requirements.txt ?).
+
+      - name: 🚀 Exécuter la surveillance  # Step : Run monitor.
+        env:  # Env secrets Twilio.
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}  # SID.
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}  # Token.
+          TWILIO_WHATSAPP_FROM: ${{ secrets.TWILIO_WHATSAPP_FROM }}  # From.
+          TWILIO_WHATSAPP_TO: ${{ secrets.TWILIO_WHATSAPP_TO }}  # To.
+        run: python monitor.py  # Exécute monitor.py.
+
+  security-scan:  # Job scan (dépend de monitor).
+    runs-on: ubuntu-latest  # Ubuntu.
+    needs: monitor  # Dépend de monitor.
+    if: always()  # Toujours exécuté.
+
+    steps:  # Steps.
+      - name: 📥 Récupération du dépôt  # Checkout.
+        uses: actions/checkout@v3  # v3.
+
+      - name: 🐍 Installer Python  # Setup Python.
+        uses: actions/setup-python@v4  # v4.
+        with:  # Params.
+          python-version: "3.11"  # 3.11.
+>>>>>>> f187b1211e2b27bf3d01b368312f0f2bba2b0874
