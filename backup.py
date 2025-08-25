@@ -1,108 +1,118 @@
 #!/usr/bin/env python3
 """
-Script de sauvegarde pour WordPress.com
+Script de sauvegarde pour WordPress.com - Version complète
 """
 
 import os
-import json
 import requests
 from datetime import datetime
-from pathlib import Path
+import json
+import hashlib
 
 # Configuration
-BACKUP_DIR = os.environ.get("BACKUP_DIR", "backups")
 SITE_URL = os.environ.get("SITE_URL", "https://oupssecuretest.wordpress.com")
+BACKUP_DIR = "backups"
+os.makedirs(BACKUP_DIR, exist_ok=True)
 
-def create_backup_dir():
-    """Crée le répertoire de sauvegarde s'il n'existe pas"""
-    Path(BACKUP_DIR).mkdir(exist_ok=True)
+def fetch_url(url):
+    """Récupère le contenu d'une URL"""
+    try:
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        return response.text
+    except Exception as e:
+        print(f"❌ Erreur lors de la récupération de {url}: {e}")
+        return None
 
-def save_with_timestamp(content, backup_type, extension="html"):
-    """Sauvegarde le contenu avec un horodatage"""
+def save_backup(content, backup_type, extension="html"):
+    """Sauvegarde le contenu dans un fichier"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{backup_type}_{timestamp}.{extension}"
-    filepath = Path(BACKUP_DIR) / filename
+    filepath = os.path.join(BACKUP_DIR, filename)
     
     with open(filepath, 'w', encoding='utf-8') as f:
         f.write(content)
     
-    # Créer des métadonnées
+    # Calcul du hash pour vérification d'intégrité
+    content_hash = hashlib.md5(content.encode('utf-8')).hexdigest()
+    
+    # Sauvegarde des métadonnées
     metadata = {
-        "date": datetime.now().isoformat(),
         "url": SITE_URL,
-        "type": backup_type,
-        "filename": filename
+        "date": datetime.now().isoformat(),
+        "hash": content_hash,
+        "size": len(content),
+        "type": backup_type
     }
     
-    meta_filepath = filepath.with_suffix(filepath.suffix + '.meta.json')
-    with open(meta_filepath, 'w') as f:
+    with open(filepath + '.meta.json', 'w') as f:
         json.dump(metadata, f, indent=2)
     
+    print(f"✅ Sauvegarde {backup_type} réussie: {filename}")
     return filepath
 
-def backup_homepage():
-    """Sauvegarde la page d'accueil"""
-    try:
-        response = requests.get(SITE_URL)
-        response.raise_for_status()
+def handle_manual_export():
+    """Gère l'export manuel WordPress"""
+    print("📋 Export manuel détecté")
+    
+    # Chercher le fichier d'export le plus récent
+    export_files = [f for f in os.listdir(BACKUP_DIR) if f.startswith('export_') and f.endswith('.xml')]
+    
+    if export_files:
+        # Prendre le fichier le plus récent
+        latest_export = sorted(export_files, reverse=True)[0]
+        export_path = os.path.join(BACKUP_DIR, latest_export)
         
-        filepath = save_with_timestamp(response.text, "homepage")
-        print(f"✅ Page d'accueil sauvegardée: {filepath.name}")
-        return True
-    except Exception as e:
-        print(f"❌ Erreur sauvegarde page d'accueil: {e}")
-        return False
-
-def backup_rss():
-    """Sauvegarde le flux RSS"""
-    try:
-        rss_url = f"{SITE_URL}/feed/"
-        response = requests.get(rss_url)
-        response.raise_for_status()
+        # Lire le contenu pour calculer le hash
+        with open(export_path, 'r', encoding='utf-8') as f:
+            content = f.read()
         
-        filepath = save_with_timestamp(response.text, "rss", "xml")
-        print(f"✅ Flux RSS sauvegardé: {filepath.name}")
-        return True
-    except Exception as e:
-        print(f"❌ Erreur sauvegarde RSS: {e}")
-        return False
-
-def backup_comments():
-    """Sauvegarde les commentaires"""
-    try:
-        comments_url = f"{SITE_URL}/comments/feed/"
-        response = requests.get(comments_url)
-        response.raise_for_status()
+        content_hash = hashlib.md5(content.encode('utf-8')).hexdigest()
         
-        filepath = save_with_timestamp(response.text, "comments", "xml")
-        print(f"✅ Commentaires sauvegardés: {filepath.name}")
+        # Créer les métadonnées
+        metadata = {
+            "url": SITE_URL,
+            "date": datetime.now().isoformat(),
+            "hash": content_hash,
+            "size": len(content),
+            "type": "manual_export",
+            "file": latest_export
+        }
+        
+        with open(export_path + '.meta.json', 'w') as f:
+            json.dump(metadata, f, indent=2)
+        
+        print(f"✅ Export manuel enregistré: {latest_export}")
         return True
-    except Exception as e:
-        print(f"❌ Erreur sauvegarde commentaires: {e}")
+    else:
+        print("⚠️ Aucun fichier d'export manuel trouvé")
         return False
 
 def main():
     """Fonction principale de sauvegarde"""
-    print("💾 Démarrage de la sauvegarde")
+    print("🔄 Démarrage de la sauvegarde...")
     
-    create_backup_dir()
+    # Sauvegarde de la page d'accueil
+    homepage = fetch_url(SITE_URL)
+    if homepage:
+        save_backup(homepage, "homepage")
     
-    success_count = 0
-    total_tasks = 3  # homepage, rss, comments
+    # Sauvegarde du flux RSS
+    rss_url = SITE_URL + "/feed/"
+    rss_content = fetch_url(rss_url)
+    if rss_content:
+        save_backup(rss_content, "rss")
     
-    if backup_homepage():
-        success_count += 1
+    # Sauvegarde du flux de commentaires
+    comments_rss_url = SITE_URL + "/comments/feed/"
+    comments_rss_content = fetch_url(comments_rss_url)
+    if comments_rss_content:
+        save_backup(comments_rss_content, "comments")
     
-    if backup_rss():
-        success_count += 1
+    # Gestion de l'export manuel
+    handle_manual_export()
     
-    if backup_comments():
-        success_count += 1
-    
-    print(f"📊 Résultat: {success_count}/{total_tasks} éléments sauvegardés")
-    
-    return success_count
+    print("✅ Sauvegarde terminée")
 
 if __name__ == "__main__":
-    success_count = main()
-    exit(0 if success_count > 0 else 1)
+    main()

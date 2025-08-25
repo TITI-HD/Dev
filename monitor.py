@@ -1,53 +1,4 @@
-<<<<<<< HEAD
 #!/usr/bin/env python3
-"""
-Script de surveillance pour WordPress.com
-"""
-
-import os
-import requests
-import smtplib
-from twilio.rest import Client
-from datetime import datetime
-
-# Configuration
-SITE_URL = os.environ.get("SITE_URL", "https://oupssecuretest.wordpress.com")
-
-def check_site_availability(url):
-    """Vérifie si le site est accessible"""
-    try:
-        response = requests.get(url, timeout=10)
-        return response.status_code == 200
-    except:
-        return False
-
-def send_email_alert(subject, message):
-    """Envoie une alerte par email"""
-    try:
-        # Configuration SMTP
-        server = smtplib.SMTP(os.environ.get('SMTP_SERVER'), os.environ.get('SMTP_PORT'))
-        server.starttls()
-        server.login(os.environ.get('SMTP_USER'), os.environ.get('SMTP_PASS'))
-        
-        # Envoi du message
-        email_message = f"Subject: {subject}\n\n{message}"
-        server.sendmail(os.environ.get('SMTP_USER'), os.environ.get('ALERT_EMAIL'), email_message)
-        server.quit()
-        return True
-    except Exception as e:
-        print(f"❌ Erreur envoi email: {e}")
-        return False
-
-def send_whatsapp_alert(message):
-    """Envoie une alerte WhatsApp"""
-    try:
-        client = Client(os.environ.get('TWILIO_ACCOUNT_SID'), os.environ.get('TWILIO_AUTH_TOKEN'))
-        message = client.messages.create(
-            body=message,
-            from_=os.environ.get('TWILIO_WHATSAPP_FROM'),
-            to=os.environ.get('TWILIO_WHATSAPP_TO')
-        )
-=======
 """
 SCRIPT PRINCIPAL DE SURVEILLANCE WORDPRESS
 Surveillance complète avec alertes email/WhatsApp et sauvegarde de contenu
@@ -72,10 +23,10 @@ SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = os.environ.get("SMTP_PORT", "587")
 SMTP_USER = os.environ.get("SMTP_USER", "danieltiti882@gmail.com")
 SMTP_PASS = os.environ.get("SMTP_PASS", "")
-TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID", "ACLaf94Qd99d9e1992f9fd8695cee26le3")
-TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "4f48382904fc7900dcccedfc9")
-TWILIO_WHATSAPP_FROM = os.environ.get("TWILIO_WHATSAPP_FROM", "+14155238886")
-TWILIO_WHATSAPP_TO = os.environ.get("TWILIO_WHATSAPP_TO", "+237691796777")
+TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID", "")
+TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "")
+TWILIO_PHONE_NUMBER = os.environ.get("TWILIO_PHONE_NUMBER", "")
+ALERT_PHONE_NUMBER = os.environ.get("ALERT_PHONE_NUMBER", "")
 BACKUP_DIR = "backups"  # Dossier de sauvegarde local
 
 # Validation et conversion du port SMTP
@@ -97,7 +48,7 @@ def send_whatsapp_notification(message: str):
         bool: Succès de l'envoi
     """
     # Vérification de la configuration Twilio
-    if not all([TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM, TWILIO_WHATSAPP_TO]):
+    if not all([TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, ALERT_PHONE_NUMBER]):
         print("⚠️ Configuration Twilio manquante, notification WhatsApp ignorée.")
         return False
     
@@ -106,49 +57,16 @@ def send_whatsapp_notification(message: str):
         client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
         # Envoi du message WhatsApp
         message = client.messages.create(
-            from_=f'whatsapp:{TWILIO_WHATSAPP_FROM}',
+            from_=f'whatsapp:{TWILIO_PHONE_NUMBER}',
             body=message,
-            to=f'whatsapp:{TWILIO_WHATSAPP_TO}'
+            to=f'whatsapp:{ALERT_PHONE_NUMBER}'
         )
         print(f"✅ Notification WhatsApp envoyée: {message.sid}")
->>>>>>> f187b1211e2b27bf3d01b368312f0f2bba2b0874
         return True
     except Exception as e:
         print(f"❌ Erreur envoi WhatsApp: {e}")
         return False
 
-<<<<<<< HEAD
-def main():
-    """Fonction principale de surveillance"""
-    print("👀 Démarrage de la surveillance...")
-    
-    # Vérifier la disponibilité du site
-    is_available = check_site_availability(SITE_URL)
-    
-    if is_available:
-        print("✅ Site accessible")
-    else:
-        print("❌ Site inaccessible")
-        # Envoyer des alertes
-        alert_message = f"🚨 Site {SITE_URL} inaccessible à {datetime.now()}"
-        
-        # Envoyer email si configuré
-        if all(key in os.environ for key in ['SMTP_SERVER', 'SMTP_USER', 'SMTP_PASS', 'ALERT_EMAIL']):
-            send_email_alert("Alerte de surveillance WordPress", alert_message)
-        
-        # Envoyer WhatsApp si configuré
-        if all(key in os.environ for key in ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_WHATSAPP_FROM', 'TWILIO_WHATSAPP_TO']):
-            send_whatsapp_alert(alert_message)
-    
-import time
-
-while True:
-    # Votre code de monitoring ici
-    print("🔍 Vérification du site...")
-    # ... code existant ...
-    print("✅ Site accessible - Prochaine vérification dans 5 minutes")
-    time.sleep(300)  # 300 secondes = 5 minutes
-=======
 # ===============================
 # 📧 FONCTION D'ENVOI D'ALERTE EMAIL
 # ===============================
@@ -343,7 +261,6 @@ def main():
     backup_and_monitor()
     
     print("✅ Surveillance terminée avec succès")
->>>>>>> f187b1211e2b27bf3d01b368312f0f2bba2b0874
 
 if __name__ == "__main__":
     main()
