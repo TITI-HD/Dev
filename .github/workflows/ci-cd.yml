@@ -78,6 +78,10 @@ jobs:
           SITE_URL: ${{ vars.SITE_URL }}
         run: python backup.py
 
+        - name: Installer dépendances
+        run: pip install -r requirements.txt
+
+
       - name: 📤 Archivage des sauvegardes
         uses: actions/upload-artifact@v4
         with:

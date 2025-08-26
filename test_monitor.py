@@ -1,20 +1,17 @@
 # test_monitor.py
 import unittest
 from unittest.mock import patch, MagicMock
-import sys
-import os
-sys.path.append('.')
-
 import monitor
-<<<<<<< HEAD
-import requests
-url = "https://oupssecuretest.wordpress.com/wp-json/wp/v2/posts"
-response = requests.get(url)
-=======
 
->>>>>>> f187b1211e2b27bf3d01b368312f0f2bba2b0874
 class TestMonitor(unittest.TestCase):
-    
+    def test_site_ok(self):
+        """Test que main() retourne True si le site et l'API sont OK"""
+        with patch('monitor.check_site', return_value=True), \
+             patch('monitor.check_api', return_value=True), \
+             patch('monitor.backup_and_monitor', return_value=None):
+            result = monitor.main()
+            self.assertTrue(result)
+
     @patch('monitor.requests.get')
     def test_check_site_success(self, mock_get):
         """Test de vérification de site avec succès"""
@@ -45,49 +42,5 @@ class TestMonitor(unittest.TestCase):
         self.assertFalse(result)
         mock_alert.assert_called_once()
 
-<<<<<<< HEAD
-from http.server import HTTPServer, BaseHTTPRequestHandler
-import json
-
-class MyHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        if self.path == '/':
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            # Envoyer le code HTML complet ici
-            with open('wordpress_auth_tool.html', 'r', encoding='utf-8') as f:
-                html_content = f.read()
-            self.wfile.write(html_content.encode('utf-8'))
-        else:
-            self.send_response(404)
-            self.end_headers()
-
-def run_web_interface():
-    server = HTTPServer(('localhost', 8000), MyHandler)
-    print("Serveur démarré sur http://localhost:8000")
-    server.serve_forever()
-
-if __name__ == '__main__':
-    run_web_interface()
-
-
-from flask import Flask, render_template_string
-
-app = Flask(__name__)
-
-# Charger le contenu HTML depuis un fichier
-with open('wordpress_auth_tool.html', 'r', encoding='utf-8') as f:
-    html_content = f.read()
-
-@app.route('/wordpress-auth')
-def wordpress_auth_tool():
-    return render_template_string(html_content)
-
-if __name__ == '__main__':
-    app.run(port=8000)
-
-=======
->>>>>>> f187b1211e2b27bf3d01b368312f0f2bba2b0874
 if __name__ == '__main__':
     unittest.main()
