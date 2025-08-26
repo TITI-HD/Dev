@@ -81,10 +81,48 @@ jobs:
         - name: Installer dépendances
         run: pip install -r requirements.txt
 
-
+          - name: Run tests
+        run: |
+          mkdir -p backups
+          python -m unittest discover
       - name: 📤 Archivage des sauvegardes
         uses: actions/upload-artifact@v4
         with:
           name: wordpress-backup-${{ github.run_id }}
           path: backups/
           retention-days: 7
+        - name: Test de sauvegarde
+        run: ./test_sauvegarde.sh
+        - name: Test de sauvegarde
+        run: |
+          echo "Fichiers de sauvegarde créés:"
+          ls -la "sauvegarde des épreuves/"
+          count=$(ls -1 "sauvegarde des épreuves/" | wc -l)
+          if [ $count -gt 0 ]; then
+            echo "- Test de sauvegarde réussi"
+          else
+            echo "Échec du test de sauvegarde"
+            exit 1
+          fi
+        - name: Test de sauvegarde
+  run: |
+    # Définir le dossier de sauvegarde
+    backup_dir="sauvegarde des épreuves"
+    
+    # Créer le dossier s'il n'existe pas
+    mkdir -p "$backup_dir"
+    
+    # Créer un fichier de test si le dossier est vide
+    if [ -z "$(ls -A '$backup_dir')" ]; then
+      echo "Ceci est un fichier de sauvegarde de test" > "$backup_dir/test_sauvegarde.txt"
+    fi
+    
+    echo "Fichiers de sauvegarde créés:"
+    ls -la "$backup_dir/"
+    count=$(find "$backup_dir" -type f | wc -l)
+    if [ $count -gt 0 ]; then
+      echo "✅ Test de sauvegarde réussi ($count fichiers trouvés)"
+    else
+      echo "❌ Échec du test de sauvegarde"
+      exit 1
+    fi

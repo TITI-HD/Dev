@@ -179,6 +179,115 @@ def backup_and_monitor():
         save_content(SITE_URL + "/feed/", "rss.xml")
         save_content(SITE_URL + "/comments/feed/", "comments.xml")
 
+    
+# monitor.py
+def send_whatsapp_notification(message):
+    # Implémentation pour envoyer un message WhatsApp
+    pass
+from twilio.rest import Client
+import os
+
+def send_whatsapp_notification(message):
+    account_sid = os.getenv('TWILIO_ACCOUNT_SID')
+    auth_token = os.getenv('TWILIO_AUTH_TOKEN')
+    from_number = os.getenv('TWILIO_WHATSAPP_FROM')
+    to_number = os.getenv('TWILIO_WHATSAPP_TO')
+    
+    if not all([account_sid, auth_token, from_number, to_number]):
+        logging.error("Variables d'environnement Twilio non configurées")
+        return False
+    
+    try:
+        client = Client(account_sid, auth_token)
+        message = client.messages.create(
+            body=message,
+            from_=from_number,
+            to=to_number
+        )
+        logging.info(f"Message WhatsApp envoyé avec SID: {message.sid}")
+        return True
+    except Exception as e:
+        logging.error(f"Erreur d'envoi WhatsApp: {e}")
+        return False
+
+from unittest.mock import patch, MagicMock
+import unittest
+import monitor
+import unittest
+from unittest.mock import patch, MagicMock
+import monitor
+
+class TestNotifications(unittest.TestCase):
+    
+    @patch('monitor.Client')
+    @patch.dict('os.environ', {
+        'TWILIO_ACCOUNT_SID': 'test_sid',
+        'TWILIO_AUTH_TOKEN': 'test_token',
+        'TWILIO_WHATSAPP_FROM': 'whatsapp:+14155238886',
+        'TWILIO_WHATSAPP_TO': 'whatsapp:+1234567890'
+    })
+    def test_whatsapp_notification_success(self, mock_client):
+        # Configurer le mock
+        mock_instance = MagicMock()
+        mock_message = MagicMock()
+        mock_message.sid = 'SM1234567890'
+        mock_instance.messages.create.return_value = mock_message
+        mock_client.return_value = mock_instance
+        
+        # Exécuter le test
+        result = monitor.send_whatsapp_notification("Test message")
+        
+        # Vérifications
+        self.assertTrue(result)
+        mock_client.assert_called_once_with('test_sid', 'test_token')
+class TestNotifications(unittest.TestCase):
+    
+    @patch('monitor.Client')
+    @patch.dict('os.environ', {
+        'TWILIO_ACCOUNT_SID': 'test_sid',
+        'TWILIO_AUTH_TOKEN': 'test_token', 
+        'TWILIO_WHATSAPP_FROM': 'whatsapp:+14155238886',
+        'TWILIO_WHATSAPP_TO': 'whatsapp:+1234567890'
+    })
+    def test_whatsapp_notification_success(self, mock_client):
+        # Mock the Twilio client
+        mock_instance = MagicMock()
+        mock_message = MagicMock()
+        mock_message.sid = 'SM1234567890'
+        mock_instance.messages.create.return_value = mock_message
+        mock_client.return_value = mock_instance
+        
+        # Test the function
+        result = monitor.send_whatsapp_notification("Test message")
+        
+        # Assertions
+        self.assertTrue(result)
+        mock_client.assert_called_once_with('test_sid', 'test_token')
+        mock_instance.messages.create.assert_called_once_with(
+            body="Test message",
+            from_='whatsapp:+14155238886',
+            to='whatsapp:+1234567890'
+        )
+
+def send_whatsapp_notification(message: str) -> bool:
+    """Envoie une notification WhatsApp via Twilio"""
+    if not all([TWILIO_SID, TWILIO_AUTH, TWILIO_FROM, TWILIO_TO]):
+        log("⚠️ Twilio non configuré, WhatsApp ignoré")
+        return False
+
+    try:
+        client = Client(TWILIO_SID, TWILIO_AUTH)
+        client.messages.create(
+            from_="whatsapp:" + TWILIO_FROM,
+            to="whatsapp:" + TWILIO_TO,
+            body=message
+        )
+        log("📲 WhatsApp envoyé avec succès")
+        return True
+    except Exception as e:
+        log(f"❌ Erreur envoi WhatsApp: {e}")
+        return False
+
 def main():
     log(f"🚀 Démarrage surveillance: {SITE_URL}")
     log(f"📧 Email alerte: {ADMIN_EMAIL}")

@@ -42,5 +42,50 @@ class TestNotifications(unittest.TestCase):
             monitor.send_alert("Test Subject", "Test Message")
             mock_smtp.assert_called_once_with('smtp.gmail.com', 587)
 
+import unittest
+from unittest.mock import Mock, patch
+import os
+import sys
+from monitor import send_whatsapp_notification
+# Ajouter le répertoire parent au path pour importer monitor
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import monitor
+
+class TestNotifications(unittest.TestCase):
+    
+    @patch('monitor.Client')
+    def test_whatsapp_notification_success(self, mock_twilio):
+        # Configurer le mock
+        mock_client = Mock()
+        mock_twilio.return_value = mock_client
+
+        # Définir les variables d'environnement pour Twilio
+        os.environ['TWILIO_SID'] = 'test_sid'
+        os.environ['TWILIO_AUTH'] = 'test_auth'
+        os.environ['TWILIO_FROM'] = 'whatsapp:+14155238886'
+        os.environ['TWILIO_TO'] = 'whatsapp:+1234567890'
+
+        # Recharger le module pour prendre en compte les nouvelles variables d'environnement
+        import importlib
+        importlib.reload(monitor)
+
+        # Exécuter la fonction
+        result = monitor.send_whatsapp_notification("Test message")
+
+        # Vérifier que le client Twilio a été initialisé avec les bonnes credentials
+        mock_twilio.assert_called_once_with('test_sid', 'test_auth')
+
+        # Vérifier que le message a été envoyé
+        mock_client.messages.create.assert_called_once_with(
+            from_='whatsapp:+14155238886',
+            to='whatsapp:+1234567890',
+            body="Test message"
+        )
+
+        # Vérifier que la fonction retourne True
+        self.assertTrue(result)
+
+    # ... autres tests ...
+
 if __name__ == '__main__':
     unittest.main()
