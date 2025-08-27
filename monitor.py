@@ -242,6 +242,28 @@ class TestNotifications(unittest.TestCase):
         mock_client.assert_called_once_with('test_sid', 'test_token')
 class TestNotifications(unittest.TestCase):
     
+# Ajoutez cette fonction à monitor.py
+def send_restoration_option(alert_type, details):
+    """Propose une restauration après une alerte"""
+    subject = f"🚨 {alert_type} - Action Requise"
+    body = f"""
+{alert_type} détecté sur {SITE_URL}
+Détails: {details}
+
+Options disponibles:
+1. Restaurer automatiquement maintenant
+2. Ignorer et surveiller
+3. Contacter l'administrateur
+
+Pour restaurer immédiatement, exécutez le workflow de restauration manuelle sur GitHub Actions.
+"""
+    
+    send_alert(subject, body, whatsapp_priority=True)
+    
+    # Log supplémentaire
+    log(f"🔧 Option de restauration proposée pour: {alert_type}")
+
+
     @patch('monitor.Client')
     @patch.dict('os.environ', {
         'TWILIO_ACCOUNT_SID': 'test_sid',

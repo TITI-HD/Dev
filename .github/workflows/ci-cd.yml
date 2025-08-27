@@ -2,7 +2,7 @@ name: 🛡️ CI/CD WordPress.com
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # Toutes les 6 heures
+    - cron: '0 */3 * * *'  # Toutes les 3 heures
   workflow_dispatch:
   push:
     branches: [main]
