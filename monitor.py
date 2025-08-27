@@ -296,3 +296,33 @@ if __name__ == "__main__":
         except:
             pass
         exit(1)
+
+# Ajoutez ces fonctions à la fin de votre fichier monitor.py
+
+def send_whatsapp_notification(message: str):
+    """
+    Wrapper pour la compatibilité ascendante
+    Appelle simplement send_alert
+    """
+    send_alert("Notification WhatsApp", message)
+
+def send_restoration_option(alert_type: str, details: str):
+    """
+    Wrapper pour la compatibilité ascendante
+    Appelle simplement send_alert
+    """
+    send_alert(f"Option de restauration: {alert_type}", details)
+
+def backup_and_monitor():
+    """
+    Fonction de compatibilité pour l'ancien code
+    Exécute la sauvegarde puis la surveillance
+    """
+    log("Fonction de compatibilité: sauvegarde et surveillance")
+    
+    # Importer et exécuter la sauvegarde
+    from backup import backup_wordpress_content
+    backup_wordpress_content()
+    
+    # Exécuter la surveillance
+    main_monitoring()

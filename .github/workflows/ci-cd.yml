@@ -54,6 +54,8 @@ jobs:
       - name: 📦 Installation des dépendances
         run: pip install -r requirements.txt
 
+# Dans votre fichier .github/workflows/main.yml, remplacez les étapes problématiques
+
       - name: 🚀 Exécution de la surveillance
         env:
           SITE_URL: ${{ env.SITE_URL }}
@@ -62,7 +64,9 @@ jobs:
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
-        run: python monitor.py
+        run: python -c "import monitor; monitor.main_monitoring()"
+
+# Au lieu de moniteur.backup-and-monitor()
 
   restore:
     runs-on: ubuntu-latest
