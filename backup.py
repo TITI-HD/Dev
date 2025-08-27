@@ -1,118 +1,193 @@
-#!/usr/bin/env python3
-"""
-Script de sauvegarde pour WordPress.com - Version complète
-"""
+name: 🛡️ CI/CD Complet WordPress.com
 
-import os
-import requests
-from datetime import datetime
-import json
-import hashlib
+on:
+  schedule:
+    - cron: '0 */3 * * *'  # Toutes les 3 heures
+  workflow_dispatch:
+    inputs:
+      restore-environment:
+        description: 'Environment to restore to'
+        required: false
+        default: 'staging'
+  push:
+    branches: [main]
 
-# Configuration
-SITE_URL = os.environ.get("SITE_URL", "https://oupssecuretest.wordpress.com")
-BACKUP_DIR = "backups"
-os.makedirs(BACKUP_DIR, exist_ok=True)
+env:
+  PYTHON_VERSION: '3.11'
+  SITE_URL: ${{ vars.SITE_URL }}
+  BACKUP_DIR: 'backups'
+  RESTORE_DIR: 'restore'
+  RETENTION_DAYS: '30'
+  GPG_RECIPIENT: ${{ secrets.GPG_RECIPIENT }}
+  GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
-def fetch_url(url):
-    """Récupère le contenu d'une URL"""
-    try:
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()
-        return response.text
-    except Exception as e:
-        print(f"❌ Erreur lors de la récupération de {url}: {e}")
-        return None
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout du code
+        uses: actions/checkout@v4
 
-def save_backup(content, backup_type, extension="html"):
-    """Sauvegarde le contenu dans un fichier"""
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{backup_type}_{timestamp}.{extension}"
-    filepath = os.path.join(BACKUP_DIR, filename)
-    
-    with open(filepath, 'w', encoding='utf-8') as f:
-        f.write(content)
-    
-    # Calcul du hash pour vérification d'intégrité
-    content_hash = hashlib.md5(content.encode('utf-8')).hexdigest()
-    
-    # Sauvegarde des métadonnées
-    metadata = {
-        "url": SITE_URL,
-        "date": datetime.now().isoformat(),
-        "hash": content_hash,
-        "size": len(content),
-        "type": backup_type
-    }
-    
-    with open(filepath + '.meta.json', 'w') as f:
-        json.dump(metadata, f, indent=2)
-    
-    print(f"✅ Sauvegarde {backup_type} réussie: {filename}")
-    return filepath
+      - name: 🐍 Configuration de Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
-def handle_manual_export():
-    """Gère l'export manuel WordPress"""
-    print("📋 Export manuel détecté")
-    
-    # Chercher le fichier d'export le plus récent
-    export_files = [f for f in os.listdir(BACKUP_DIR) if f.startswith('export_') and f.endswith('.xml')]
-    
-    if export_files:
-        # Prendre le fichier le plus récent
-        latest_export = sorted(export_files, reverse=True)[0]
-        export_path = os.path.join(BACKUP_DIR, latest_export)
-        
-        # Lire le contenu pour calculer le hash
-        with open(export_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        
-        content_hash = hashlib.md5(content.encode('utf-8')).hexdigest()
-        
-        # Créer les métadonnées
-        metadata = {
-            "url": SITE_URL,
-            "date": datetime.now().isoformat(),
-            "hash": content_hash,
-            "size": len(content),
-            "type": "manual_export",
-            "file": latest_export
-        }
-        
-        with open(export_path + '.meta.json', 'w') as f:
-            json.dump(metadata, f, indent=2)
-        
-        print(f"✅ Export manuel enregistré: {latest_export}")
-        return True
-    else:
-        print("⚠️ Aucun fichier d'export manuel trouvé")
-        return False
+      - name: 📦 Installation des dépendances
+        run: pip install -r requirements.txt
 
-def main():
-    """Fonction principale de sauvegarde"""
-    print("🔄 Démarrage de la sauvegarde...")
-    
-    # Sauvegarde de la page d'accueil
-    homepage = fetch_url(SITE_URL)
-    if homepage:
-        save_backup(homepage, "homepage")
-    
-    # Sauvegarde du flux RSS
-    rss_url = SITE_URL + "/feed/"
-    rss_content = fetch_url(rss_url)
-    if rss_content:
-        save_backup(rss_content, "rss")
-    
-    # Sauvegarde du flux de commentaires
-    comments_rss_url = SITE_URL + "/comments/feed/"
-    comments_rss_content = fetch_url(comments_rss_url)
-    if comments_rss_content:
-        save_backup(comments_rss_content, "comments")
-    
-    # Gestion de l'export manuel
-    handle_manual_export()
-    
-    print("✅ Sauvegarde terminée")
+      - name: 🔒 Scan de sécurité Bandit
+        run: |
+          pip install bandit
+          bandit -r . -f html -o security-report.html || true
 
-if __name__ == "__main__":
-    main()
+      - name: 📊 Upload du rapport de sécurité
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: security-report.html
+
+  monitor:
+    runs-on: ubuntu-latest
+    needs: security-scan
+    environment: production
+    steps:
+      - name: 📥 Checkout du code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Configuration de Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: 📦 Installation des dépendances
+        run: pip install -r requirements.txt
+
+      - name: 📱 Configuration des notifications
+        run: |
+          echo "📧 Email: ${{ secrets.ALERT_EMAIL }}"
+          echo "📲 WhatsApp: ${{ secrets.TWILIO_ACCOUNT_SID != '' }}"
+
+      - name: 🚀 Exécution de la surveillance
+        env:
+          SITE_URL: ${{ env.SITE_URL }}
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_WHATSAPP_FROM: ${{ secrets.TWILIO_WHATSAPP_FROM }}
+          TWILIO_WHATSAPP_TO: ${{ secrets.TWILIO_WHATSAPP_TO }}
+          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
+        run: python monitor.py
+
+  backup:
+    runs-on: ubuntu-latest
+    needs: security-scan
+    environment: production
+    steps:
+      - name: 📥 Checkout du code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Configuration de Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: 📦 Installation des dépendances
+        run: pip install -r requirements.txt
+
+      - name: 🔑 Configuration GPG
+        run: |
+          gpg --batch --import-options import-restore --import <<< "${{ secrets.GPG_PRIVATE_KEY }}" || true
+          echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback --import <<< "${{ secrets.GPG_PRIVATE_KEY }}" || true
+
+      - name: 💾 Exécution de la sauvegarde
+        env:
+          SITE_URL: ${{ env.SITE_URL }}
+          BACKUP_DIR: ${{ env.BACKUP_DIR }}
+          GPG_RECIPIENT: ${{ env.GPG_RECIPIENT }}
+          RETENTION_DAYS: ${{ env.RETENTION_DAYS }}
+        run: python backup_script.py
+
+      - name: 📤 Archivage des sauvegardes
+        uses: actions/upload-artifact@v4
+        with:
+          name: wordpress-backup-${{ github.run_id }}
+          path: ${{ env.BACKUP_DIR }}/
+          retention-days: ${{ env.RETENTION_DAYS }}
+
+  restore-staging:
+    runs-on: ubuntu-latest
+    needs: backup
+    if: github.event_name == 'workflow_dispatch' || github.event.inputs.restore-environment == 'staging'
+    environment: staging
+    steps:
+      - name: 📥 Checkout du code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Configuration de Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: 📦 Installation des dépendances
+        run: pip install -r requirements.txt
+
+      - name: 📥 Téléchargement des sauvegardes
+        uses: actions/download-artifact@v4
+        with:
+          name: wordpress-backup-${{ github.run_id }}
+          path: ${{ env.BACKUP_DIR }}
+
+      - name: 🔑 Configuration GPG
+        run: |
+          echo "${{ secrets.GPG_PASSPHRASE }}" > /tmp/passphrase
+          chmod 600 /tmp/passphrase
+
+      - name: 🔄 Restauration sur staging
+        env:
+          BACKUP_DIR: ${{ env.BACKUP_DIR }}
+          RESTORE_DIR: ${{ env.RESTORE_DIR }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: python restore.py
+
+      - name: 📊 Rapport de restauration
+        uses: actions/upload-artifact@v4
+        with:
+          name: restore-report-staging
+          path: ${{ env.RESTORE_DIR }}/
+
+  integration-test:
+    runs-on: ubuntu-latest
+    needs: restore-staging
+    environment: staging
+    steps:
+      - name: 🧪 Tests d'intégration
+        run: |
+          # Tests de vérification que la restauration a fonctionné
+          python -c "
+          import json
+          import os
+          report_path = os.path.join('${{ env.RESTORE_DIR }}', 'restore_report.json')
+          if os.path.exists(report_path):
+            with open(report_path, 'r') as f:
+                report = json.load(f)
+            print(f'Rapport de restauration: {report}')
+            exit(0 if report.get('restored_items', 0) > 0 else 1)
+          else:
+            print('❌ Aucun rapport de restauration trouvé')
+            exit(1)
+          "
+
+  notification:
+    runs-on: ubuntu-latest
+    needs: [backup, integration-test]
+    if: always()
+    steps:
+      - name: 📱 Notification de statut
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Backup et restauration réussis"
+            # Ajouter notification WhatsApp/Email ici
+          else
+            echo "❌ Échec du processus"
+            # Ajouter notification d'erreur ici
+          fi
