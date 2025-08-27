@@ -1,9 +1,15 @@
 from flask import Flask, render_template, request, jsonify
 import requests
 from requests.auth import HTTPBasicAuth
-import base64
+import os
 
 app = Flask(__name__)
+
+# Désactiver le mode debug en production
+if os.environ.get('FLASK_ENV') == 'production':
+    app.config['DEBUG'] = False
+else:
+    app.config['DEBUG'] = True
 
 # Page principale avec l'interface d'authentification
 @app.route('/')
@@ -51,11 +57,7 @@ def test_wordpress_auth():
             'message': f'Erreur de connexion: {str(e)}'
         })
 
-# Vos routes existantes pour le monitoring
-@app.route('/monitor')
-def monitor():
-    # Votre logique de monitoring existante
-    return "Page de monitoring"
-
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # Utiliser le port depuis les variables d'environnement ou 5000 par défaut
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)

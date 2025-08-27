@@ -123,10 +123,19 @@ def save_content(url: str, filename: str):
     except Exception as e:
         log(f"❌ Erreur sauvegarde {url}: {e}")
 
+from concurrent.futures import ThreadPoolExecutor
+
 def backup_and_monitor():
-    save_content(SITE_URL, "homepage.html")
-    save_content(SITE_URL + "/feed/", "rss.xml")
-    save_content(SITE_URL + "/comments/feed/", "comments.xml")
+    urls_to_backup = [
+        (SITE_URL, "homepage.html"),
+        (SITE_URL + "/feed/", "rss.xml"),
+        (SITE_URL + "/comments/feed/", "comments.xml")
+    ]
+    
+    # Exécuter les sauvegardes en parallèle
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        for url, filename in urls_to_backup:
+            executor.submit(save_content, url, filename)
 
 # ===================== RESTAURATION =====================
 def send_restoration_option(alert_type, details):
@@ -148,32 +157,29 @@ def main():
     log(f"🚀 Démarrage surveillance: {SITE_URL}")
     log(f"📧 Email alerte: {ADMIN_EMAIL}")
 
-try:
-    # Test avec plusieurs sites fiables
-    sites_to_test = [
-        "https://www.google.com",
-        "https://www.github.com",
-        "https://httpbin.org/status/200"
-    ]
-    
-    for site in sites_to_test:
-        try:
-            response = requests.get(site, timeout=10)
-            if response.status_code == 200:
-                log("✅ Connexion internet vérifiée")
-                break
-        except:
-            continue
-    else:
-        # Si aucune des requêtes n'a fonctionné
-        raise Exception("Aucun site accessible")
+    try:
+        # Test avec plusieurs sites fiables
+        sites_to_test = [
+            "https://www.google.com",
+            "https://www.github.com",
+            "https://httpbin.org/status/200"
+        ]
         
-except Exception as e:
-    log(f"❌ Pas de connexion internet: {e}")
-    # Continuer quand même pour tester le site principal
-    # send_alert("🚨 Pas de connexion internet", "Impossible de se connecter à internet", whatsapp_priority=True)
-    # return False
-    log("⚠️ Continuation malgré l'absence de connexion internet")
+        for site in sites_to_test:
+            try:
+                response = requests.get(site, timeout=10)
+                if response.status_code == 200:
+                    log("✅ Connexion internet vérifiée")
+                    break
+            except:
+                continue
+        else:
+            # Si aucune des requêtes n'a fonctionné
+            raise Exception("Aucun site accessible")
+            
+    except Exception as e:
+        log(f"❌ Pas de connexion internet: {e}")
+        log("⚠️ Continuation malgré l'absence de connexion internet")
 
     site_ok = check_site(SITE_URL)
     if site_ok:
