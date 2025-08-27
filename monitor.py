@@ -9,15 +9,18 @@ import os
 import smtplib
 import requests
 import hashlib
+import re
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from pathlib import Path
+from typing import Dict, List
 
 # ===================== CONFIGURATION =====================
 SITE_URL = os.environ.get("SITE_URL", "https://oupssecuretest.wordpress.com")
 ALERT_EMAIL = os.environ.get("ALERT_EMAIL", "danieltiti882@gmail.com")
-SMTP_SERVER = os.environ.get("SMTP_SERVER", "gmail")
+SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")  # Correction: ajout de .com
+
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
 SMTP_USER = os.environ.get("SMTP_USER", "danieltiti882@gmail.com")
 SMTP_PASS = os.environ.get("SMTP_PASS", "yizn odfb xlhz mygy")
@@ -41,7 +44,7 @@ def compute_hash(content: str) -> str:
     """Calcule le hash SHA-256 du contenu"""
     return hashlib.sha256(content.encode('utf-8')).hexdigest()
 
-def send_alert(subject: str, body: str, is_critical: bool = False):
+def send_alert(subject: str, body: str, is_critical: bool = False) -> bool:
     """
     Envoie une alerte par email
     
@@ -49,6 +52,9 @@ def send_alert(subject: str, body: str, is_critical: bool = False):
         subject: Sujet de l'email
         body: Corps du message
         is_critical: Si True, indique une alerte critique
+    
+    Returns:
+        bool: True si l'alerte a été envoyée avec succès, False sinon
     """
     if not all([SMTP_SERVER, SMTP_USER, SMTP_PASS, ALERT_EMAIL]):
         log("ATTENTION: Configuration SMTP incomplète - impossible d'envoyer une alerte")
@@ -78,7 +84,7 @@ def send_alert(subject: str, body: str, is_critical: bool = False):
         return False
 
 # ===================== VÉRIFICATIONS =====================
-def check_site_availability() -> dict:
+def check_site_availability() -> Dict:
     """
     Vérifie la disponibilité du site
     
@@ -115,7 +121,7 @@ def check_site_availability() -> dict:
     
     return results
 
-def check_content_integrity() -> dict:
+def check_content_integrity() -> Dict:
     """
     Vérifie l'intégrité du contenu en comparant avec la dernière sauvegarde
     
@@ -176,7 +182,7 @@ def check_content_integrity() -> dict:
     
     return results
 
-def check_for_malicious_patterns() -> dict:
+def check_for_malicious_patterns() -> Dict:
     """
     Recherche des patterns suspects dans le code source
     
@@ -199,8 +205,6 @@ def check_for_malicious_patterns() -> dict:
         r'passthru\s*\(',
         r'shell_exec\s*\('
     ]
-    
-    import re
     
     try:
         response = requests.get(SITE_URL, timeout=10)
@@ -283,22 +287,7 @@ def main_monitoring():
     
     log("FIN: Surveillance terminée")
 
-if __name__ == "__main__":
-    try:
-        main_monitoring()
-    except Exception as e:
-        log(f"ERREUR CRITIQUE: Erreur lors de la surveillance: {e}")
-        # Tentative d'envoi d'alerte même en cas d'erreur
-        try:
-            send_alert("ERREUR Surveillance WordPress", 
-                      f"Le script de surveillance a rencontré une erreur critique:\n\n{str(e)}", 
-                      is_critical=True)
-        except:
-            pass
-        exit(1)
-
-# Ajoutez ces fonctions à la fin de votre fichier monitor.py
-
+# ===================== FONCTIONS DE COMPATIBILITÉ =====================
 def send_whatsapp_notification(message: str):
     """
     Wrapper pour la compatibilité ascendante
@@ -321,8 +310,27 @@ def backup_and_monitor():
     log("Fonction de compatibilité: sauvegarde et surveillance")
     
     # Importer et exécuter la sauvegarde
-    from backup import backup_wordpress_content
-    backup_wordpress_content()
+    try:
+        from backup import backup_wordpress_content
+        backup_wordpress_content()
+    except ImportError:
+        log("ERREUR: Module backup non trouvé")
+    except Exception as e:
+        log(f"ERREUR: Échec de la sauvegarde: {e}")
     
     # Exécuter la surveillance
     main_monitoring()
+
+if __name__ == "__main__":
+    try:
+        main_monitoring()
+    except Exception as e:
+        log(f"ERREUR CRITIQUE: Erreur lors de la surveillance: {e}")
+        # Tentative d'envoi d'alerte même en cas d'erreur
+        try:
+            send_alert("ERREUR Surveillance WordPress", 
+                      f"Le script de surveillance a rencontré une erreur critique:\n\n{str(e)}", 
+                      is_critical=True)
+        except:
+            pass
+        exit(1)
