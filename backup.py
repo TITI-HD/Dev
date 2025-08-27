@@ -1,193 +1,135 @@
-name: 🛡️ CI/CD Complet WordPress.com
+#!/usr/bin/env python3
+"""
+Script de sauvegarde complet pour WordPress
+Sauvegarde le contenu public et les métadonnées du site
+Version corrigée pour WordPress.com
+"""
 
-on:
-  schedule:
-    - cron: '0 */3 * * *'  # Toutes les 3 heures
-  workflow_dispatch:
-    inputs:
-      restore-environment:
-        description: 'Environment to restore to'
-        required: false
-        default: 'staging'
-  push:
-    branches: [main]
+import os
+import requests
+import json
+import hashlib
+from datetime import datetime
+from pathlib import Path
 
-env:
-  PYTHON_VERSION: '3.11'
-  SITE_URL: ${{ vars.SITE_URL }}
-  BACKUP_DIR: 'backups'
-  RESTORE_DIR: 'restore'
-  RETENTION_DAYS: '30'
-  GPG_RECIPIENT: ${{ secrets.GPG_RECIPIENT }}
-  GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+# Configuration
+SITE_URL = os.environ.get("SITE_URL", "https://oupssecuretest.wordpress.com")
+BACKUP_DIR = os.environ.get("BACKUP_DIR", "backups")
+Path(BACKUP_DIR).mkdir(exist_ok=True)
 
-jobs:
-  security-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - name: 📥 Checkout du code
-        uses: actions/checkout@v4
+def log(message: str):
+    """Fonction de logging avec timestamp"""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] {message}")
 
-      - name: 🐍 Configuration de Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
+def fetch_url(url: str, timeout: int = 30) -> str:
+    """
+    Récupère le contenu d'une URL avec gestion des erreurs
+    
+    Args:
+        url: L'URL à récupérer
+        timeout: Timeout de la requête en secondes
+        
+    Returns:
+        Le contenu texte de la réponse ou None en cas d'erreur
+    """
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0 (WordPress Backup Script)'}
+        response = requests.get(url, timeout=timeout, headers=headers)
+        response.raise_for_status()
+        return response.text
+    except requests.RequestException as e:
+        log(f"ERREUR: Impossible de récupérer {url}: {e}")
+        return None
 
-      - name: 📦 Installation des dépendances
-        run: pip install -r requirements.txt
+def save_backup(content: str, backup_type: str, extension: str = "html") -> str:
+    """
+    Sauvegarde le contenu dans un fichier avec métadonnées
+    
+    Args:
+        content: Le contenu à sauvegarder
+        backup_type: Type de sauvegarde (homepage, rss, comments, etc.)
+        extension: Extension du fichier
+        
+    Returns:
+        Le chemin du fichier sauvegardé
+    """
+    try:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{backup_type}_{timestamp}.{extension}"
+        filepath = os.path.join(BACKUP_DIR, filename)
+        
+        # Sauvegarde du contenu
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(content)
+        
+        # Calcul du hash SHA-256 pour l'intégrité
+        content_hash = hashlib.sha256(content.encode('utf-8')).hexdigest()
+        
+        # Métadonnées de sauvegarde
+        metadata = {
+            "url": SITE_URL,
+            "date": datetime.now().isoformat(),
+            "hash": content_hash,
+            "size": len(content),
+            "type": backup_type,
+            "filename": filename
+        }
+        
+        # Sauvegarde des métadonnées
+        with open(filepath + '.meta.json', 'w', encoding='utf-8') as f:
+            json.dump(metadata, f, indent=2, ensure_ascii=False)
+        
+        log(f"SUCCES: Sauvegarde {backup_type} réussie: {filename}")
+        return filepath
+        
+    except Exception as e:
+        log(f"ERREUR: Impossible de sauvegarder {backup_type}: {e}")
+        return None
 
-      - name: 🔒 Scan de sécurité Bandit
-        run: |
-          pip install bandit
-          bandit -r . -f html -o security-report.html || true
+def backup_wordpress_content():
+    """Sauvegarde le contenu public WordPress"""
+    log("DEBUT: Démarrage de la sauvegarde WordPress...")
+    
+    # URLs à sauvegarder (uniquement celles disponibles sur WordPress.com)
+    endpoints = [
+        (SITE_URL, "homepage", "html"),
+        (SITE_URL + "/feed/", "rss", "xml"),
+        (SITE_URL + "/comments/feed/", "comments", "xml")
+    ]
+    
+    successful_backups = 0
+    
+    for url, backup_type, extension in endpoints:
+        content = fetch_url(url)
+        if content:
+            if save_backup(content, backup_type, extension):
+                successful_backups += 1
+        else:
+            log(f"ATTENTION: Impossible de sauvegarder: {backup_type}")
+    
+    # Rapport de sauvegarde
+    backup_report = {
+        "date": datetime.now().isoformat(),
+        "site_url": SITE_URL,
+        "total_endpoints": len(endpoints),
+        "successful_backups": successful_backups,
+        "status": "completed" if successful_backups > 0 else "failed"
+    }
+    
+    report_path = os.path.join(BACKUP_DIR, f"backup_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+    with open(report_path, 'w', encoding='utf-8') as f:
+        json.dump(backup_report, f, indent=2, ensure_ascii=False)
+    
+    log(f"SUCCES: Sauvegarde terminée: {successful_backups}/{len(endpoints)} réussites")
 
-      - name: 📊 Upload du rapport de sécurité
-        uses: actions/upload-artifact@v4
-        with:
-          name: security-report
-          path: security-report.html
+def main():
+    """Fonction principale"""
+    try:
+        backup_wordpress_content()
+    except Exception as e:
+        log(f"ERREUR CRITIQUE: Erreur lors de la sauvegarde: {e}")
+        exit(1)
 
-  monitor:
-    runs-on: ubuntu-latest
-    needs: security-scan
-    environment: production
-    steps:
-      - name: 📥 Checkout du code
-        uses: actions/checkout@v4
-
-      - name: 🐍 Configuration de Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: 📦 Installation des dépendances
-        run: pip install -r requirements.txt
-
-      - name: 📱 Configuration des notifications
-        run: |
-          echo "📧 Email: ${{ secrets.ALERT_EMAIL }}"
-          echo "📲 WhatsApp: ${{ secrets.TWILIO_ACCOUNT_SID != '' }}"
-
-      - name: 🚀 Exécution de la surveillance
-        env:
-          SITE_URL: ${{ env.SITE_URL }}
-          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
-          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
-          TWILIO_WHATSAPP_FROM: ${{ secrets.TWILIO_WHATSAPP_FROM }}
-          TWILIO_WHATSAPP_TO: ${{ secrets.TWILIO_WHATSAPP_TO }}
-          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
-        run: python monitor.py
-
-  backup:
-    runs-on: ubuntu-latest
-    needs: security-scan
-    environment: production
-    steps:
-      - name: 📥 Checkout du code
-        uses: actions/checkout@v4
-
-      - name: 🐍 Configuration de Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: 📦 Installation des dépendances
-        run: pip install -r requirements.txt
-
-      - name: 🔑 Configuration GPG
-        run: |
-          gpg --batch --import-options import-restore --import <<< "${{ secrets.GPG_PRIVATE_KEY }}" || true
-          echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback --import <<< "${{ secrets.GPG_PRIVATE_KEY }}" || true
-
-      - name: 💾 Exécution de la sauvegarde
-        env:
-          SITE_URL: ${{ env.SITE_URL }}
-          BACKUP_DIR: ${{ env.BACKUP_DIR }}
-          GPG_RECIPIENT: ${{ env.GPG_RECIPIENT }}
-          RETENTION_DAYS: ${{ env.RETENTION_DAYS }}
-        run: python backup_script.py
-
-      - name: 📤 Archivage des sauvegardes
-        uses: actions/upload-artifact@v4
-        with:
-          name: wordpress-backup-${{ github.run_id }}
-          path: ${{ env.BACKUP_DIR }}/
-          retention-days: ${{ env.RETENTION_DAYS }}
-
-  restore-staging:
-    runs-on: ubuntu-latest
-    needs: backup
-    if: github.event_name == 'workflow_dispatch' || github.event.inputs.restore-environment == 'staging'
-    environment: staging
-    steps:
-      - name: 📥 Checkout du code
-        uses: actions/checkout@v4
-
-      - name: 🐍 Configuration de Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: 📦 Installation des dépendances
-        run: pip install -r requirements.txt
-
-      - name: 📥 Téléchargement des sauvegardes
-        uses: actions/download-artifact@v4
-        with:
-          name: wordpress-backup-${{ github.run_id }}
-          path: ${{ env.BACKUP_DIR }}
-
-      - name: 🔑 Configuration GPG
-        run: |
-          echo "${{ secrets.GPG_PASSPHRASE }}" > /tmp/passphrase
-          chmod 600 /tmp/passphrase
-
-      - name: 🔄 Restauration sur staging
-        env:
-          BACKUP_DIR: ${{ env.BACKUP_DIR }}
-          RESTORE_DIR: ${{ env.RESTORE_DIR }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: python restore.py
-
-      - name: 📊 Rapport de restauration
-        uses: actions/upload-artifact@v4
-        with:
-          name: restore-report-staging
-          path: ${{ env.RESTORE_DIR }}/
-
-  integration-test:
-    runs-on: ubuntu-latest
-    needs: restore-staging
-    environment: staging
-    steps:
-      - name: 🧪 Tests d'intégration
-        run: |
-          # Tests de vérification que la restauration a fonctionné
-          python -c "
-          import json
-          import os
-          report_path = os.path.join('${{ env.RESTORE_DIR }}', 'restore_report.json')
-          if os.path.exists(report_path):
-            with open(report_path, 'r') as f:
-                report = json.load(f)
-            print(f'Rapport de restauration: {report}')
-            exit(0 if report.get('restored_items', 0) > 0 else 1)
-          else:
-            print('❌ Aucun rapport de restauration trouvé')
-            exit(1)
-          "
-
-  notification:
-    runs-on: ubuntu-latest
-    needs: [backup, integration-test]
-    if: always()
-    steps:
-      - name: 📱 Notification de statut
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "✅ Backup et restauration réussis"
-            # Ajouter notification WhatsApp/Email ici
-          else
-            echo "❌ Échec du processus"
-            # Ajouter notification d'erreur ici
-          fi
+if __name__ == "__main__":
+    main()

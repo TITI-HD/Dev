@@ -1,9 +1,22 @@
 {
-  "date": "2025-08-27T14:58:18.429622",
+  "date": "2025-08-27T16:38:23.137274",
+  "restore_dir": "restore",
+  "total_files": 13,
   "restored_files": [
+    "backup_report_20250827_162045.json",
     "comments.xml",
+    "comments_20250827_150217.html",
+    "comments_20250827_162041.xml",
+    "comments_20250827_162120.html",
     "homepage.html",
-    "rss.xml"
+    "homepage_20250827_150212.html",
+    "homepage_20250827_162036.html",
+    "homepage_20250827_162116.html",
+    "rss.xml",
+    "rss_20250827_150215.html",
+    "rss_20250827_162038.xml",
+    "rss_20250827_162118.html"
   ],
-  "status": "success"
+  "failed_files": [],
+  "success_rate": "100.0%"
 }
