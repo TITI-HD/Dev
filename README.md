@@ -14,7 +14,7 @@ Ce projet permet de superviser la disponibilité, la sécurité et d'effectuer d
 - Scan de sécurité via l'API WPScan (détection de la version WordPress et interrogation pour vulnérabilités).
 - Envoi d'alertes par e-mail en cas de problème (indisponibilité ou vulnérabilités détectées).
 - Résultats consultables dans l’onglet Actions de GitHub.
->>>>>>> f187b1211e2b27bf3d01b368312f0f2bba2b0874
+
 
 ## Utilisation
 
@@ -67,4 +67,3 @@ Les limitations de WordPress.com sont correctement prises en compte, et la solut
 
 ## Dépendances
 - Voir `requirements.txt` pour les bibliothèques Python requises.
->>>>>>> f187b1211e2b27bf3d01b368312f0f2bba2b0874

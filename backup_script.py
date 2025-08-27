@@ -34,7 +34,7 @@ def save_backup(content, backup_type, extension="html"):
         f.write(content)
     
     # Calcul du hash pour vérification d'intégrité
-    content_hash = hashlib.md5(content.encode('utf-8')).hexdigest()
+    content_hash = hashlib.sha256(content.encode('utf-8')).hexdigest()
     
     # Sauvegarde des métadonnées
     metadata = {
