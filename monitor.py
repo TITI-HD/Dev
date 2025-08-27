@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-SCRIPT DE SURVEILLANCE WORDPRESS AVANCÉ
-Surveillance proactive avec vérification d'intégrité et alertes
-Version corrigée pour Windows
+Script principal de surveillance WordPress
+Inclut la vérification de disponibilité, d'intégrité et de sécurité
+Appelle également la sauvegarde depuis backup.py
 """
 
 import os
+import sys
 import smtplib
 import requests
 import hashlib
@@ -14,323 +15,171 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict
 
-# ===================== CONFIGURATION =====================
+# Import de backup.py
+try:
+    from backup import backup_wordpress_content
+except ImportError:
+    print("[ERREUR IMPORT] Impossible d'importer backup_wordpress_content depuis backup.py")
+    sys.exit(1)
+
+# === Configuration ===
 SITE_URL = os.environ.get("SITE_URL", "https://oupssecuretest.wordpress.com")
 ALERT_EMAIL = os.environ.get("ALERT_EMAIL", "danieltiti882@gmail.com")
-SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")  # Correction: ajout de .com
-
+SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
 SMTP_USER = os.environ.get("SMTP_USER", "danieltiti882@gmail.com")
 SMTP_PASS = os.environ.get("SMTP_PASS", "yizn odfb xlhz mygy")
 
-# Dossiers de travail
 MONITOR_DIR = "monitor_data"
 Path(MONITOR_DIR).mkdir(exist_ok=True)
 
-# ===================== FONCTIONS UTILITAIRES =====================
+# === Logging ===
 def log(message: str):
-    """Journalisation avec timestamp"""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_line = f"[{timestamp}] {message}"
-    print(log_line)
-    
-    # Sauvegarde dans le fichier de log
+    line = f"[{timestamp}] {message}"
+    print(line)
     with open(os.path.join(MONITOR_DIR, "monitor.log"), "a", encoding="utf-8") as f:
-        f.write(log_line + "\n")
+        f.write(line + "\n")
 
+# === Utilitaires ===
 def compute_hash(content: str) -> str:
-    """Calcule le hash SHA-256 du contenu"""
     return hashlib.sha256(content.encode('utf-8')).hexdigest()
 
-def send_alert(subject: str, body: str, is_critical: bool = False) -> bool:
-    """
-    Envoie une alerte par email
-    
-    Args:
-        subject: Sujet de l'email
-        body: Corps du message
-        is_critical: Si True, indique une alerte critique
-    
-    Returns:
-        bool: True si l'alerte a été envoyée avec succès, False sinon
-    """
+def send_alert(subject: str, body: str) -> bool:
     if not all([SMTP_SERVER, SMTP_USER, SMTP_PASS, ALERT_EMAIL]):
-        log("ATTENTION: Configuration SMTP incomplète - impossible d'envoyer une alerte")
+        log("ATTENTION: Configuration SMTP incomplète.")
         return False
-
     try:
-        # Préparation du message
         msg = MIMEMultipart()
         msg['From'] = SMTP_USER
         msg['To'] = ALERT_EMAIL
         msg['Subject'] = subject
-        
-        # Corps du message
         msg.attach(MIMEText(body, 'plain', 'utf-8'))
-        
-        # Connexion et envoi
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             server.starttls()
             server.login(SMTP_USER, SMTP_PASS)
             server.send_message(msg)
-        
-        log("SUCCES: Alerte envoyée avec succès")
+        log("SUCCES: Alerte envoyée")
         return True
-        
     except Exception as e:
-        log(f"ERREUR: Impossible d'envoyer l'alerte: {e}")
+        log(f"ERREUR envoi alerte : {e}")
         return False
 
-# ===================== VÉRIFICATIONS =====================
+# === Vérifications ===
 def check_site_availability() -> Dict:
-    """
-    Vérifie la disponibilité du site
-    
-    Returns:
-        Dict avec les résultats de la vérification
-    """
-    log("VERIFICATION: Vérification de la disponibilité du site...")
-    
-    results = {
-        'available': False,
-        'status_code': None,
-        'response_time': None,
-        'error': None
-    }
-    
+    log("Vérification de disponibilité...")
+    results = {'available': False, 'status_code': None, 'response_time': None, 'error': None}
     try:
-        start_time = datetime.now()
-        response = requests.get(SITE_URL, timeout=15, 
-                              headers={'User-Agent': 'WordPress Monitor/1.0'})
-        end_time = datetime.now()
-        
-        results['status_code'] = response.status_code
-        results['response_time'] = (end_time - start_time).total_seconds()
-        results['available'] = response.status_code == 200
-        
-        if response.status_code == 200:
-            log("SUCCES: Site accessible et répond correctement")
-        else:
-            log(f"ATTENTION: Site accessible mais retourne le code: {response.status_code}")
-            
-    except requests.RequestException as e:
+        start = datetime.now()
+        resp = requests.get(SITE_URL, timeout=15)
+        results['status_code'] = resp.status_code
+        results['response_time'] = (datetime.now() - start).total_seconds()
+        results['available'] = resp.status_code == 200
+        log("Site accessible." if results['available'] else f"Site retourne HTTP {resp.status_code}")
+    except Exception as e:
         results['error'] = str(e)
-        log(f"ERREUR: Site inaccessible: {e}")
-    
+        log(f"ERREUR accès site : {e}")
     return results
 
 def check_content_integrity() -> Dict:
-    """
-    Vérifie l'intégrité du contenu en comparant avec la dernière sauvegarde
-    
-    Returns:
-        Dict avec les résultats de la vérification
-    """
-    log("VERIFICATION: Vérification de l'intégrité du contenu...")
-    
-    results = {
-        'changed': False,
-        'changes': [],
-        'error': None
-    }
-    
-    # URLs à surveiller
+    log("Vérification d'intégrité...")
+    results = {'changed': False, 'changes': [], 'error': None}
     endpoints = [
         (SITE_URL, "homepage"),
         (SITE_URL + "/feed/", "rss"),
         (SITE_URL + "/comments/feed/", "comments")
     ]
-    
-    for url, endpoint_name in endpoints:
+    for url, name in endpoints:
         try:
             response = requests.get(url, timeout=10)
             if response.status_code == 200:
-                current_content = response.text
-                current_hash = compute_hash(current_content)
-                
-                # Fichier de référence pour cet endpoint
-                ref_file = os.path.join(MONITOR_DIR, f"{endpoint_name}.ref")
-                
+                current_hash = compute_hash(response.text)
+                ref_file = os.path.join(MONITOR_DIR, f"{name}.ref")
                 if os.path.exists(ref_file):
-                    # Lecture du hash de référence
                     with open(ref_file, 'r', encoding='utf-8') as f:
-                        ref_hash = f.read().strip()
-                    
-                    # Comparaison
-                    if current_hash != ref_hash:
+                        old_hash = f.read().strip()
+                    if current_hash != old_hash:
                         results['changed'] = True
-                        results['changes'].append({
-                            'endpoint': endpoint_name,
-                            'url': url,
-                            'change_type': 'content_modified'
-                        })
-                        log(f"MODIFICATION: Changement détecté: {endpoint_name}")
+                        results['changes'].append({'endpoint': name, 'url': url})
+                        log(f"Changement détecté : {name}")
                 else:
-                    # Premier passage, création de la référence
                     with open(ref_file, 'w', encoding='utf-8') as f:
                         f.write(current_hash)
-                    log(f"INFO: Référence créée: {endpoint_name}")
-                    
+                    log(f"Référence créée : {name}")
             else:
-                log(f"ATTENTION: Impossible de vérifier {endpoint_name}: HTTP {response.status_code}")
-                
+                log(f"Erreur HTTP sur {url}: {response.status_code}")
         except Exception as e:
-            log(f"ERREUR: Impossible de vérifier {endpoint_name}: {e}")
+            log(f"Erreur intégrité {name}: {e}")
             results['error'] = str(e)
-    
     return results
 
 def check_for_malicious_patterns() -> Dict:
-    """
-    Recherche des patterns suspects dans le code source
-    
-    Returns:
-        Dict avec les résultats de la vérification
-    """
-    log("VERIFICATION: Recherche de patterns suspects...")
-    
-    results = {
-        'suspicious_patterns': [],
-        'error': None
-    }
-    
-    # Patterns à rechercher (simplifié pour WordPress.com)
-    suspicious_patterns = [
-        r'eval\s*\(',
-        r'base64_decode\s*\(',
-        r'exec\s*\(',
-        r'system\s*\(',
-        r'passthru\s*\(',
-        r'shell_exec\s*\('
-    ]
-    
+    log("Recherche de patterns suspects...")
+    results = {'suspicious_patterns': [], 'error': None}
+    patterns = [r'eval\s*\(', r'base64_decode\s*\(', r'exec\s*\(', r'system\s*\(', r'shell_exec\s*\(']
     try:
         response = requests.get(SITE_URL, timeout=10)
         if response.status_code == 200:
-            content = response.text
-            
-            for pattern in suspicious_patterns:
-                if re.search(pattern, content, re.IGNORECASE):
-                    results['suspicious_patterns'].append({
-                        'pattern': pattern,
-                        'found': True
-                    })
-                    log(f"ATTENTION: Pattern suspect détecté: {pattern}")
-        
-        if not results['suspicious_patterns']:
-            log("SUCCES: Aucun pattern suspect détecté")
-            
+            for pat in patterns:
+                if re.search(pat, response.text, re.IGNORECASE):
+                    results['suspicious_patterns'].append(pat)
+                    log(f"Pattern suspect détecté : {pat}")
+        else:
+            log("Erreur HTTP pendant la recherche de patterns.")
     except Exception as e:
         results['error'] = str(e)
-        log(f"ERREUR: Impossible de rechercher des patterns: {e}")
-    
+        log(f"Erreur pattern : {e}")
     return results
 
-# ===================== FONCTION PRINCIPALE =====================
+# === Monitoring principal ===
 def main_monitoring():
-    """
-    Fonction principale de surveillance
-    """
-    log("DEBUT: Démarrage de la surveillance WordPress")
-    log(f"INFO: Site surveillé: {SITE_URL}")
-    
-    # Réalisation des vérifications
+    log("=== DÉMARRAGE SURVEILLANCE ===")
     availability = check_site_availability()
     integrity = check_content_integrity()
     security = check_for_malicious_patterns()
-    
-    # Analyse des résultats
-    issues_detected = False
-    alert_message = "Rapport de surveillance WordPress:\n\n"
-    
-    # Vérification de disponibilité
+    alert_message = f"Surveillance WordPress : {SITE_URL}\n\n"
+    issues = False
+
     if not availability['available']:
-        issues_detected = True
-        alert_message += "PROBLEME DE DISPONIBILITE\n"
-        alert_message += f"Le site {SITE_URL} est inaccessible.\n"
+        issues = True
+        alert_message += "❌ Site INACCESSIBLE\n"
         if availability['error']:
-            alert_message += f"Erreur: {availability['error']}\n"
-        alert_message += "\n"
-    
-    # Vérification d'intégrité
+            alert_message += f"Erreur: {availability['error']}\n\n"
+
     if integrity['changed']:
-        issues_detected = True
-        alert_message += "MODIFICATIONS DETECTEES\n"
-        for change in integrity['changes']:
-            alert_message += f"- {change['endpoint']}: {change['url']}\n"
+        issues = True
+        alert_message += "⚠️ Modifications détectées :\n"
+        for c in integrity['changes']:
+            alert_message += f"- {c['endpoint']} : {c['url']}\n"
         alert_message += "\n"
-    
-    # Vérification de sécurité
+
     if security['suspicious_patterns']:
-        issues_detected = True
-        alert_message += "PATTERNS SUSPECTS DETECTES\n"
-        for pattern in security['suspicious_patterns']:
-            alert_message += f"- Pattern: {pattern['pattern']}\n"
+        issues = True
+        alert_message += "⚠️ Patterns suspects :\n"
+        for p in security['suspicious_patterns']:
+            alert_message += f"- {p}\n"
         alert_message += "\n"
-    
-    # Envoi des alertes si nécessaire
-    if issues_detected:
-        alert_subject = "ALERTE Surveillance WordPress - Problemes detectes"
-        send_alert(alert_subject, alert_message, is_critical=True)
-        log("ALERTE: Problemes détectés - Alertes envoyées")
+
+    if issues:
+        send_alert("🚨 Alerte Surveillance WordPress", alert_message)
     else:
-        # Rapport d'inaction
-        inactivity_message = "Rapport de surveillance WordPress\n\n"
-        inactivity_message += "Aucune activité suspecte détectée sur le site.\n"
-        inactivity_message += f"Site: {SITE_URL}\n"
-        inactivity_message += f"Dernière vérification: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-        
-        send_alert("Rapport Surveillance WordPress - Aucune activité", inactivity_message)
-        log("SUCCES: Aucun problème détecté - Rapport d'inaction envoyé")
-    
-    log("FIN: Surveillance terminée")
+        log("Aucun problème détecté.")
+        send_alert("✅ Rapport Surveillance WordPress", "Aucune anomalie détectée.")
+    log("=== FIN SURVEILLANCE ===")
 
-# ===================== FONCTIONS DE COMPATIBILITÉ =====================
-def send_whatsapp_notification(message: str):
-    """
-    Wrapper pour la compatibilité ascendante
-    Appelle simplement send_alert
-    """
-    send_alert("Notification WhatsApp", message)
-
-def send_restoration_option(alert_type: str, details: str):
-    """
-    Wrapper pour la compatibilité ascendante
-    Appelle simplement send_alert
-    """
-    send_alert(f"Option de restauration: {alert_type}", details)
-
+# === Enchaînement backup + monitoring ===
 def backup_and_monitor():
-    """
-    Fonction de compatibilité pour l'ancien code
-    Exécute la sauvegarde puis la surveillance
-    """
-    log("Fonction de compatibilité: sauvegarde et surveillance")
-    
-    # Importer et exécuter la sauvegarde
-    try:
-        from backup import backup_wordpress_content
-        backup_wordpress_content()
-    except ImportError:
-        log("ERREUR: Module backup non trouvé")
-    except Exception as e:
-        log(f"ERREUR: Échec de la sauvegarde: {e}")
-    
-    # Exécuter la surveillance
+    log("Lancement sauvegarde...")
+    backup_wordpress_content()
+    log("Lancement surveillance...")
     main_monitoring()
 
 if __name__ == "__main__":
     try:
-        main_monitoring()
+        backup_and_monitor()
     except Exception as e:
-        log(f"ERREUR CRITIQUE: Erreur lors de la surveillance: {e}")
-        # Tentative d'envoi d'alerte même en cas d'erreur
-        try:
-            send_alert("ERREUR Surveillance WordPress", 
-                      f"Le script de surveillance a rencontré une erreur critique:\n\n{str(e)}", 
-                      is_critical=True)
-        except:
-            pass
-        exit(1)
+        log(f"ERREUR CRITIQUE: {e}")
+        send_alert("❌ Erreur critique dans la surveillance", str(e))
+        sys.exit(1)

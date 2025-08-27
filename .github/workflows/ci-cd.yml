@@ -1,78 +1,117 @@
-name: Tests et Sauvegarde
+name: WordPress CI/CD - Validation, Sauvegarde et Restauration
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
 
 jobs:
-  test:
+  validate:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install dependencies
-      run: pip install -r requirements.txt
-    
-    - name: Run basic validation
-      run: |
-        # Validation basique sans tests unitaires
-        python -c "import monitor; print('✅ Module monitor importé avec succès')"
-        python -c "import backup; print('✅ Module backup importé avec succès')"
-        python -c "import app; print('✅ Module app importé avec succès')"
-        echo "Validation terminée sans erreurs"
-    
-    - name: Create validation report
-      run: |
-        echo "# Rapport de validation" > validation-report.md
-        echo "✅ Tous les modules Python importés avec succès" >> validation-report.md
-        echo "Date: $(date)" >> validation-report.md
-    
-    - name: Upload validation results
-      uses: actions/upload-artifact@v3
-      with:
-        name: validation-results
-        path: validation-report.md
-  
-  backup:
+      - uses: actions/checkout@v4
+      
+      - name: 🐍 Configurer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: 📦 Installer les dépendances
+        run: pip install -r requirements.txt
+      
+      - name: ✅ Valider les modules Python
+        run: |
+          python -c "import monitor; print('✅ Module monitor importé avec succès')"
+          python -c "import backup; print('✅ Module backup importé avec succès')"
+          python -c "import app; print('✅ Module app importé avec succès')"
+          python -c "import restore; print('✅ Module restore importé avec succès')"
+          echo "## ✅ Validation" > report.md
+          echo "- Tous les modules Python ont été importés avec succès." >> report.md
+
+  backup-test:
     runs-on: ubuntu-latest
-    needs: test
+    needs: validate
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install dependencies
-      run: pip install -r requirements.txt
-    
-    - name: Create test backup directory
-      run: mkdir -p test-backups
-    
-    - name: Simulate backup process
-      run: |
-        # Simulation du processus de sauvegarde
-        echo "<html>Test homepage content</html>" > test-backups/test_homepage.html
-        echo "<rss>Test RSS content</rss>" > test-backups/test_rss.xml
-        echo "<comments>Test comments</comments>" > test-backups/test_comments.xml
-        
-        # Création de métadonnées de test
-        echo '{"date": "'$(date)'", "files": ["test_homepage.html", "test_rss.xml", "test_comments.xml"]}' > test-backups/backup_metadata.json
-        
-        count=$(ls -1 test-backups/ | wc -l)
-        if [ $count -gt 0 ]; then
-          echo "✅ Test de sauvegarde réussi ($count fichiers créés)"
-        else
-          echo "❌ Échec du test de sauvegarde"
-          exit 1
-        fi
-    
-    - name: Upload backup test results
-      uses: actions/upload-artifact@v3
-      with:
-        name: backup-test-results
-        path: test-backups/
+      - uses: actions/checkout@v4
+      
+      - name: 🐍 Configurer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      
+      - name: 📦 Installer les dépendances
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 💾 Exécuter le script de sauvegarde
+        run: python backup.py
+
+      - name: 🔍 Vérifier les fichiers de sauvegarde
+        run: |
+          echo "Fichiers de sauvegarde créés :"
+          ls -la backups/
+          count=$(ls backups/ | wc -l)
+          if [ "$count" -gt 0 ]; then
+            echo "- ✅ Sauvegarde réussie ($count fichiers)" >> report.md
+          else
+            echo "❌ Échec du test de sauvegarde" >> report.md
+            exit 1
+          fi
+
+      - name: 🧪 Lancer les tests unitaires
+        run: python -m unittest discover -s . -p "test_*.py"
+
+      - name: 📤 Sauvegarder les artefacts (backups)
+        uses: actions/upload-artifact@v4
+        with:
+          name: wordpress-backups
+          path: backups/
+
+  restore-test:
+    runs-on: ubuntu-latest
+    needs: backup-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 🐍 Configurer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 📦 Installer les dépendances
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 📥 Télécharger les artefacts (backups)
+        uses: actions/download-artifact@v4
+        with:
+          name: wordpress-backups
+          path: restored-backups
+
+      - name: 🔍 Vérifier les fichiers restaurés
+        run: |
+          echo "Contenu du dossier restauré:"
+          ls -la restored-backups/
+          count=$(ls restored-backups/ | wc -l)
+          if [ "$count" -gt 0 ]; then
+            echo "- ✅ Restauration réussie ($count fichiers)" >> report.md
+          else
+            echo "❌ Aucun fichier restauré" >> report.md
+            exit 1
+          fi
+
+      - name: 🔄 Exécuter le script de restauration
+        run: python restore.py restored-backups
+
+      - name: 📊 Attacher le rapport final combiné
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-final
+          path: report.md
+
+      - name: 📢 Publier rapport dans Summary GitHub
+        run: |
+          echo "### 🚀 Rapport Final CI/CD" >> $GITHUB_STEP_SUMMARY
+          cat report.md >> $GITHUB_STEP_SUMMARY
