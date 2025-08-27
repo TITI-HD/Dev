@@ -17,7 +17,8 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from time import sleep
 from twilio.rest import Client
-from dotenv import load_dotenv load_dotenv()
+from dotenv import load_dotenv
+load_dotenv()
 
 # ===============================
 # 🔧 CONFIGURATION
