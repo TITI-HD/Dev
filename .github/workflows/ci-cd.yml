@@ -2,7 +2,7 @@ name: WordPress CI/CD - Validation, Sauvegarde et Restauration
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
 
 jobs:
@@ -10,15 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: 🐍 Configurer Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      
+
       - name: 📦 Installer les dépendances
         run: pip install -r requirements.txt
-      
+
       - name: ✅ Vérifier import des modules
         run: |
           python -c "import monitor; print('✅ monitor importé')"
@@ -30,7 +30,7 @@ jobs:
       - name: 📤 Sauvegarder le rapport provisoire
         uses: actions/upload-artifact@v4
         with:
-          name: report-part
+          name: report-part-validate-${{ github.run_id }}
           path: report.md
 
   backup-test:
@@ -38,12 +38,12 @@ jobs:
     needs: validate
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: 🐍 Configurer Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      
+
       - name: 📦 Installer les dépendances
         run: |
           python -m pip install --upgrade pip
@@ -67,13 +67,13 @@ jobs:
       - name: 📤 Sauvegarder artefacts (backups)
         uses: actions/upload-artifact@v4
         with:
-          name: wordpress-backups
+          name: wordpress-backups-${{ github.run_id }}
           path: backups/
 
       - name: 📤 Sauvegarder rapport
         uses: actions/upload-artifact@v4
         with:
-          name: report-part
+          name: report-part-backup-${{ github.run_id }}
           path: report.md
 
   restore-test:
@@ -93,7 +93,7 @@ jobs:
       - name: 📥 Télécharger sauvegardes
         uses: actions/download-artifact@v4
         with:
-          name: wordpress-backups
+          name: wordpress-backups-${{ github.run_id }}
           path: restored-backups
 
       - name: 🔍 Vérifier restauration
@@ -113,7 +113,7 @@ jobs:
       - name: 📊 Publier rapport final
         uses: actions/upload-artifact@v4
         with:
-          name: rapport-final
+          name: rapport-final-${{ github.run_id }}
           path: report.md
 
       - name: 📢 Ajouter au résumé GitHub
