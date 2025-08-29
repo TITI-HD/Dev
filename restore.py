@@ -11,6 +11,25 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
+
+import sys
+
+def restore_backups(backup_dir=None):
+    """
+    Restaure les sauvegardes vers le dossier de restauration
+    """
+    if backup_dir is None:
+        backup_dir = os.environ.get("BACKUP_DIR", "backups")
+    restore_dir = os.environ.get("RESTORE_DIR", "restore")
+
+    Path(restore_dir).mkdir(exist_ok=True)
+
+    if not os.path.exists(backup_dir):
+        log(f"ERREUR: Le dossier de sauvegarde n'existe pas: {backup_dir}")
+        return False
+
+    # ... reste du code inchangé ...
+
 def log(message: str):
     """Fonction de logging avec timestamp"""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -126,11 +145,9 @@ def restore_backups():
 def main():
     """Fonction principale"""
     try:
-        success = restore_backups()
+        backup_dir = sys.argv[1] if len(sys.argv) > 1 else None
+        success = restore_backups(backup_dir)
         exit(0 if success else 1)
     except Exception as e:
         log(f"ERREUR CRITIQUE: Erreur lors de la restauration: {e}")
         exit(1)
-
-if __name__ == "__main__":
-    main()
