@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
 Script principal de surveillance WordPress
-Inclut la vérification de disponibilité, d'intégrité et de sécurité
-Appelle également la sauvegarde depuis backup.py
+- Vérification disponibilité, intégrité et sécurité
+- Appelle la sauvegarde depuis backup.py
+- Compatible Windows et Linux
 """
 
 import os
@@ -30,10 +31,15 @@ ALERT_EMAIL = os.environ.get("ALERT_EMAIL", "danieltiti882@gmail.com")
 SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
 SMTP_USER = os.environ.get("SMTP_USER", "danieltiti882@gmail.com")
-SMTP_PASS = os.environ.get("SMTP_PASS", "yizn odfb xlhz mygy")
-
+SMTP_PASS = os.environ.get("SMTP_PASS", "")
 MONITOR_DIR = "monitor_data"
 Path(MONITOR_DIR).mkdir(exist_ok=True)
+
+# Emoji facultatif selon l'OS
+USE_EMOJI = os.name != "nt"  # Windows cmd peut poser problème
+
+def emoji(symbol: str) -> str:
+    return symbol if USE_EMOJI else ""
 
 # === Logging ===
 def log(message: str):
@@ -77,7 +83,7 @@ def check_site_availability() -> Dict:
         results['status_code'] = resp.status_code
         results['response_time'] = (datetime.now() - start).total_seconds()
         results['available'] = resp.status_code == 200
-        log("Site accessible." if results['available'] else f"Site retourne HTTP {resp.status_code}")
+        log(f"Site accessible {emoji('✅')}" if results['available'] else f"Site retourne HTTP {resp.status_code} {emoji('⚠️')}")
     except Exception as e:
         results['error'] = str(e)
         log(f"ERREUR accès site : {e}")
@@ -103,7 +109,7 @@ def check_content_integrity() -> Dict:
                     if current_hash != old_hash:
                         results['changed'] = True
                         results['changes'].append({'endpoint': name, 'url': url})
-                        log(f"Changement détecté : {name}")
+                        log(f"Changement détecté : {name} {emoji('⚠️')}")
                 else:
                     with open(ref_file, 'w', encoding='utf-8') as f:
                         f.write(current_hash)
@@ -111,8 +117,8 @@ def check_content_integrity() -> Dict:
             else:
                 log(f"Erreur HTTP sur {url}: {response.status_code}")
         except Exception as e:
-            log(f"Erreur intégrité {name}: {e}")
             results['error'] = str(e)
+            log(f"Erreur intégrité {name}: {e}")
     return results
 
 def check_for_malicious_patterns() -> Dict:
@@ -125,9 +131,7 @@ def check_for_malicious_patterns() -> Dict:
             for pat in patterns:
                 if re.search(pat, response.text, re.IGNORECASE):
                     results['suspicious_patterns'].append(pat)
-                    log(f"Pattern suspect détecté : {pat}")
-        else:
-            log("Erreur HTTP pendant la recherche de patterns.")
+                    log(f"Pattern suspect détecté : {pat} {emoji('⚠️')}")
     except Exception as e:
         results['error'] = str(e)
         log(f"Erreur pattern : {e}")
@@ -135,7 +139,7 @@ def check_for_malicious_patterns() -> Dict:
 
 # === Monitoring principal ===
 def main_monitoring():
-    log("=== DÉMARRAGE SURVEILLANCE ===")
+    log(f"=== DÉMARRAGE SURVEILLANCE ===")
     availability = check_site_availability()
     integrity = check_content_integrity()
     security = check_for_malicious_patterns()
@@ -144,20 +148,20 @@ def main_monitoring():
 
     if not availability['available']:
         issues = True
-        alert_message += "❌ Site INACCESSIBLE\n"
+        alert_message += f"Site INACCESSIBLE {emoji('❌')}\n"
         if availability['error']:
             alert_message += f"Erreur: {availability['error']}\n\n"
 
     if integrity['changed']:
         issues = True
-        alert_message += "⚠️ Modifications détectées :\n"
+        alert_message += "Modifications détectées :\n"
         for c in integrity['changes']:
             alert_message += f"- {c['endpoint']} : {c['url']}\n"
         alert_message += "\n"
 
     if security['suspicious_patterns']:
         issues = True
-        alert_message += "⚠️ Patterns suspects :\n"
+        alert_message += "Patterns suspects :\n"
         for p in security['suspicious_patterns']:
             alert_message += f"- {p}\n"
         alert_message += "\n"
@@ -165,9 +169,9 @@ def main_monitoring():
     if issues:
         send_alert("🚨 Alerte Surveillance WordPress", alert_message)
     else:
-        log("Aucun problème détecté.")
+        log(f"Aucun problème détecté {emoji('✅')}")
         send_alert("✅ Rapport Surveillance WordPress", "Aucune anomalie détectée.")
-    log("=== FIN SURVEILLANCE ===")
+    log(f"=== FIN SURVEILLANCE ===")
 
 # === Enchaînement backup + monitoring ===
 def backup_and_monitor():

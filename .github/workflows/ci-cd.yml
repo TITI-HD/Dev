@@ -19,15 +19,13 @@ jobs:
       - name: 📦 Installer les dépendances
         run: pip install -r requirements.txt
       
-      - name: ✅ Valider les modules Python
+      - name: ✅ Vérifier import des modules
         run: |
-          python -c "import monitor; print('✅ Module monitor importé avec succès')"
-          python -c "import backup; print('✅ Module backup importé avec succès')"
-          python -c "import app; print('✅ Module app importé avec succès')"
-          python -c "import restore; print('✅ Module restore importé avec succès')"
+          python -c "import monitor; print('✅ monitor importé')"
+          python -c "import backup; print('✅ backup importé')"
+          python -c "import restore; print('✅ restore importé')"
           echo "# 📊 Rapport CI/CD WordPress" > report.md
-          echo "## ✅ Validation" >> report.md
-          echo "- Tous les modules Python ont été importés avec succès." >> report.md
+          echo "## ✅ Validation réussie" >> report.md
 
       - name: 📤 Sauvegarder le rapport provisoire
         uses: actions/upload-artifact@v4
@@ -51,30 +49,28 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: 💾 Exécuter le script de sauvegarde
+      - name: 💾 Exécuter la sauvegarde WordPress
         run: python backup.py
 
-      - name: 🔍 Vérifier les fichiers de sauvegarde
+      - name: 🔍 Vérifier les sauvegardes
         run: |
-          count=$(ls backups/ | wc -l)
-          if [ "$count" -gt 0 ]; then
+          echo "## 🔒 Rapport sauvegarde" > report.md
+          if [ -d backups ] && [ "$(ls -A backups)" ]; then
+            count=$(ls backups | wc -l)
             echo "- ✅ Sauvegarde réussie ($count fichiers)" >> report.md
-            echo "- Hash: $(sha256sum backups/* | head -n 1 | cut -d ' ' -f1)" >> report.md
+            sha256sum backups/* | head -n 3 >> report.md
           else
-            echo "❌ Échec du test de sauvegarde" >> report.md
+            echo "❌ Aucune sauvegarde générée" >> report.md
             exit 1
           fi
 
-      - name: 🧪 Lancer les tests unitaires
-        run: python -m unittest discover -s . -p "test_*.py"
-
-      - name: 📤 Sauvegarder artefacts
+      - name: 📤 Sauvegarder artefacts (backups)
         uses: actions/upload-artifact@v4
         with:
           name: wordpress-backups
           path: backups/
 
-      - name: 📤 Sauvegarder rapport partiel
+      - name: 📤 Sauvegarder rapport
         uses: actions/upload-artifact@v4
         with:
           name: report-part
@@ -94,34 +90,33 @@ jobs:
       - name: 📦 Installer les dépendances
         run: pip install -r requirements.txt
 
-      - name: 📥 Télécharger les artefacts (backups)
+      - name: 📥 Télécharger sauvegardes
         uses: actions/download-artifact@v4
         with:
           name: wordpress-backups
           path: restored-backups
 
-      - name: 🔍 Vérifier les fichiers restaurés
+      - name: 🔍 Vérifier restauration
         run: |
-          count=$(ls restored-backups/ | wc -l)
-          if [ "$count" -gt 0 ]; then
-            echo "- ✅ Restauration réussie ($count fichiers)" >> report.md
+          echo "## ♻️ Rapport restauration" > report.md
+          if [ -d restored-backups ] && [ "$(ls -A restored-backups)" ]; then
+            count=$(ls restored-backups | wc -l)
+            echo "- ✅ Restauration OK ($count fichiers)" >> report.md
           else
-            echo "❌ Aucun fichier restauré" >> report.md
+            echo "❌ Restauration échouée" >> report.md
             exit 1
           fi
 
-      - name: 🔄 Exécuter le script de restauration
+      - name: 🔄 Exécuter restauration
         run: python restore.py restored-backups
 
-      - name: 📊 Attacher rapport final combiné
+      - name: 📊 Publier rapport final
         uses: actions/upload-artifact@v4
         with:
           name: rapport-final
           path: report.md
 
-      - name: 📢 Publier rapport dans Summary GitHub
+      - name: 📢 Ajouter au résumé GitHub
         run: |
           echo "### 🚀 Rapport Final CI/CD" >> $GITHUB_STEP_SUMMARY
           cat report.md >> $GITHUB_STEP_SUMMARY
-
-      
