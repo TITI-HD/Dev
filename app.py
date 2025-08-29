@@ -57,8 +57,15 @@ def test_wordpress_auth():
             'message': f'Erreur de connexion: {str(e)}'
         })
 
+if os.environ.get('FLASK_ENV') == 'production':
+    app.config['DEBUG'] = False
+else:
+    app.config['DEBUG'] = True
+
+
 if __name__ == '__main__':
     # Utiliser le port depuis les variables d'environnement ou 5000 par défaut
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
     app.run(debug=False, port=5000)
+
