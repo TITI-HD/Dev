@@ -1,7 +1,7 @@
 {
-  "date": "2025-08-29T02:11:43.446346",
+  "date": "2025-08-29T04:15:27.716115",
   "restore_dir": "restore",
-  "total_files": 42,
+  "total_files": 50,
   "restored_files": [
     "backup_report_20250827_162045.json",
     "backup_report_20250827_171950.json",
@@ -21,6 +21,9 @@
     "comments_20250827_193331.xml",
     "comments_20250827_194156.xml",
     "comments_20250829_021023.xml",
+    "comments_20250829_021735.xml",
+    "comments_20250829_040422.xml",
+    "comments_20250829_040504.xml",
     "homepage.html",
     "homepage_20250827_150212.html",
     "homepage_20250827_162036.html",
@@ -33,6 +36,8 @@
     "homepage_20250827_193327.html",
     "homepage_20250827_194147.html",
     "homepage_20250829_021016.html",
+    "homepage_20250829_021727.html",
+    "homepage_20250829_040455.html",
     "rss.xml",
     "rss_20250827_150215.html",
     "rss_20250827_162038.xml",
@@ -44,7 +49,10 @@
     "rss_20250827_190250.xml",
     "rss_20250827_193329.xml",
     "rss_20250827_194153.xml",
-    "rss_20250829_021019.xml"
+    "rss_20250829_021019.xml",
+    "rss_20250829_021731.xml",
+    "rss_20250829_040420.xml",
+    "rss_20250829_040459.xml"
   ],
   "failed_files": [],
   "success_rate": "100.0%"
