@@ -1,0 +1,1637 @@
+< !DOCTYPE html>
+<html lang= »fr »>
+<head>
+    <meta charset= »UTF-8 »>
+    <meta name= »viewport » content= »width=device-width, initial-scale=1.0 »>
+    <title>Télécharger le Portfolio de Daniel Titi Junior</title>
+    <style>
+        Body {
+            Font-family : ‘Segoe UI’, Tahoma, Geneva, Verdana, sans-serif ;
+            Margin : 0 ;
+            Padding : 0 ;
+            Display : flex ;
+            Justify-content : center ;
+            Align-items : center ;
+            Min-height : 100vh ;
+            Background : linear-gradient(135deg, #4a86e8 0%, #2ecc71 100%) ;
+            Color : #333 ;
+        }
+        
+        .container {
+            Background-color : white ;
+            Border-radius : 15px ;
+            Box-shadow : 0 10px 30px rgba(0, 0, 0, 0.2) ;
+            Padding : 40px ;
+            Text-align : center ;
+            Max-width : 600px ;
+            Width : 90% ;
+        }
+        
+        H1 {
+            Color : #2d3748 ;
+            Margin-bottom : 20px ;
+        }
+        
+        P {
+            Color : #718096 ;
+            Line-height : 1.6 ;
+            Margin-bottom : 30px ;
+        }
+        
+        .btn {
+            Display : inline-block ;
+            Padding : 14px 30px ;
+            Background-color : #4a86e8 ;
+            Color : white ;
+            Text-decoration : none ;
+            Border-radius : 50px ;
+            Font-weight : 600 ;
+            Transition : all 0.3s ease ;
+            Box-shadow : 0 4px 15px rgba(74, 134, 232, 0.3) ;
+        }
+        
+        .btn :hover {
+            Background-color : #3b71c7 ;
+            Transform : translateY(-3px) ;
+            Box-shadow : 0 10px 25px rgba(74, 134, 232, 0.4) ;
+        }
+        
+        .features {
+            Text-align : left ;
+            Margin : 30px 0 ;
+        }
+        
+        .features h2 {
+            Color : #2d3748 ;
+            Margin-bottom : 15px ;
+        }
+        
+        .features ul {
+            List-style-type : none ;
+            Padding : 0 ;
+        }
+        
+        .features li {
+            Padding : 10px 0 ;
+            Border-bottom : 1px solid #e2e8f0 ;
+            Display : flex ;
+            Align-items : center ;
+        }
+        
+        .features li :before {
+            Content : « ✓ » ;
+            Color : #2ecc71 ;
+            Font-weight : bold ;
+            Margin-right : 10px ;
+        }
+        
+        .logo {
+            Font-size : 2.5rem ;
+            Font-weight : 700 ;
+            Color : #4a86e8 ;
+            Margin-bottom : 20px ;
+        }
+        
+        .logo span {
+            Color : #2ecc71 ;
+        }
+        
+        .countdown {
+            Font-size : 1.2rem ;
+            Margin-top : 20px ;
+            Color : #718096 ;
+        }
+    </style>
+</head>
+<body>
+    <div class= »container »>
+        <div class= »logo »>Daniel <span>Titi</span> Jr.</div>
+        <h1>Portfolio Développeur Full-Stack</h1>
+        <p>Votre portfolio personnalisé est prêt au téléchargement. Cliquez sur le bouton ci-dessous pour le télécharger automatiquement.</p>
+        
+        <div class= »features »>
+            <h2>Fonctionnalités incluses :</h2>
+            <ul>
+                <li>Design moderne et responsive</li>
+                <li>Mode clair/sombre avec animation</li>
+                <li>Section compétences avec barres de progression animées</li>
+                <li>Timeline d’expérience professionnelle</li>
+                <li>Section projets avec effets de survol</li>
+                <li>Formulaire de contact fonctionnel avec EmailJS</li>
+                <li>Animations au défilement</li>
+                <li>Section GitHub pour vos dépôts</li>
+                <li>Optimisation pour mobile</li>
+            </ul>
+        </div>
+        
+        <a href= »# » id= »downloadBtn » class= »btn »>Télécharger mon Portfolio</a>
+        
+        <div class= »countdown » id= »countdown »>Le téléchargement débutera automatiquement dans <span id= »count »>5</span> secondes</div>
+    </div>
+
+    <script>
+        // Fonction pour déclencher le téléchargement
+        Function downloadPortfolio() {
+            // Créer un élément d’ancre invisible
+            Const link = document.createElement(‘a’) ;
+            Link.href = ‘data :text/html ;charset=utf-8,’ + encodeURIComponent(`< !DOCTYPE html>
+<html lang= »fr »>
+<head>
+    <meta charset= »UTF-8 »>
+    <meta name= »viewport » content= »width=device-width, initial-scale=1.0 »>
+    <title>Daniel Titi Junior – Développeur Full-Stack</title>
+    <link rel= »stylesheet » href= »https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css »>
+    <link href= »https://fonts.googleapis.com/css2 ?family=Poppins :wght@300 ;400 ;500 ;600 ;700&family=Open+Sans :wght@300 ;400 ;600&display=swap » rel= »stylesheet »>
+    <script src= »https://cdn.jsdelivr.net/npm/emailjs-com@3.2.0/dist/email.min.js »></script>
+    <script>
+        (function() {
+            Emailjs.init(« YOUR_USER_ID ») ; // Remplacez par votre User ID EmailJS
+        })() ;
+    </script>
+    <style>
+        :root {
+            --primary : #4a86e8 ;
+            --secondary : #6aa2e8 ;
+            --accent : #2ecc71 ;
+            --dark : #2d3748 ;
+            --light : #f8f9fa ;
+            --gray : #718096 ;
+            --transition : all 0.3s ease ;
+        }
+
+        .dark-mode {
+            --primary : #63b3ed ;
+            --secondary : #90cdf4 ;
+            --accent : #68d391 ;
+            --dark : #e2e8f0 ;
+            --light : #1a202c ;
+            --gray : #a0aec0 ;
+        }
+        
+{
+            Margin : 0 ;
+            Padding : 0 ;
+            Box-sizing : border-box ;
+            Transition : var(--transition) ;
+        }
+        
+        Body {
+            Background-color : var(--light) ;
+            Color : var(--dark) ;
+            Line-height : 1.6 ;
+            Overflow-x : hidden ;
+            Font-family : ‘Open Sans’, sans-serif ;
+            Transition : background-color 0.5s ease ;
+        }
+        
+        H1, h2, h3, h4, h5, h6 {
+            Font-family : ‘Poppins’, sans-serif ;
+            Font-weight : 600 ;
+        }
+        
+        .container {
+            Max-width : 1200px ;
+            Margin : 0 auto ;
+            Padding : 0 20px ;
+        }
+        
+        /* Header & Navigation */
+        Header {
+            Background-color : rgba(255, 255, 255, 0.95) ;
+            Box-shadow : 0 2px 10px rgba(0, 0, 0, 0.1) ;
+            Position : fixed ;
+            Width : 100% ;
+            Top : 0 ;
+            z-index : 1000 ;
+            backdrop-filter : blur(10px) ;
+        }
+        
+        .dark-mode header {
+            Background-color : rgba(26, 32, 44, 0.95) ;
+        }
+        
+        Nav {
+            Display : flex ;
+            Justify-content : space-between ;
+            Align-items : center ;
+            Padding : 20px 0 ;
+        }
+        
+        .logo {
+            Font-size : 1.8rem ;
+            Font-weight : 700 ;
+            Color : var(--primary) ;
+            Display : flex ;
+            Align-items : center ;
+        }
+        
+        .logo span {
+            Color : var(--accent) ;
+        }
+        
+        .nav-links {
+            Display : flex ;
+            List-style : none ;
+        }
+        
+        .nav-links li {
+            Margin-left : 30px ;
+        }
+        
+        .nav-links a {
+            Text-decoration : none ;
+            Color : var(--dark) ;
+            Font-weight : 500 ;
+            Transition : var(--transition) ;
+            Position : relative ;
+        }
+        
+        .nav-links a ::after {
+            Content : ‘’ ;
+            Position : absolute ;
+            Width : 0 ;
+            Height : 2px ;
+            Bottom : -5px ;
+            Left : 0 ;
+            Background-color : var(--primary) ;
+            Transition : var(--transition) ;
+        }
+        
+        .nav-links a :hover ::after {
+            Width : 100% ;
+        }
+        
+        .nav-links a :hover {
+            Color : var(--primary) ;
+        }
+        
+        .theme-toggle {
+            Background : none ;
+            Border : none ;
+            Cursor : pointer ;
+            Font-size : 1.5rem ;
+            Color : var(--dark) ;
+            Margin-left : 20px ;
+        }
+        
+        .hamburger {
+            Display : none ;
+            Cursor : pointer ;
+        }
+        
+        /* Hero Section */
+        .hero {
+            Padding : 180px 0 120px ;
+            Background : linear-gradient(135deg, rgba(240, 249, 255, 0.8) 0%, rgba(224, 242, 254, 0.8) 100%) ;
+            Text-align : center ;
+            Position : relative ;
+            Overflow : hidden ;
+        }
+        
+        .dark-mode .hero {
+            Background : linear-gradient(135deg, rgba(26, 32, 44, 0.8) 0%, rgba(45, 55, 72, 0.8) 100%) ;
+        }
+        
+        .hero ::before {
+            Content : ‘’ ;
+            Position : absolute ;
+            Top : 0 ;
+            Left : 0 ;
+            Width : 100% ;
+            Height : 100% ;
+            Background : url(‘data :image/svg+xml ;utf8,<svg xmlns= »http://www.w3.org/2000/svg » viewBox= »0 0 100 100 » width= »100 » height= »100 » opacity= »0.05 »><circle cx= »50 » cy= »50 » r= »40 » stroke= »%234a86e8 » stroke-width= »2 » fill= »none » /></svg>’) ;
+            Animation : rotate 30s linear infinite ;
+            Pointer-events : none ;
+        }
+        
+        .hero-content {
+            Max-width : 800px ;
+            Margin : 0 auto ;
+            Position : relative ;
+            z-index : 1 ;
+        }
+        
+        .hero h1 {
+            Font-size : 3.5rem ;
+            Margin-bottom : 20px ;
+            Color : var(--dark) ;
+            Animation : fadeInUp 1s ease ;
+        }
+        
+        .hero p {
+            Font-size : 1.2rem ;
+            Color : var(--gray) ;
+            Margin-bottom : 30px ;
+            Animation : fadeInUp 1s ease 0.2s forwards ;
+            Opacity : 0 ;
+        }
+        
+        .hero-buttons {
+            Display : flex ;
+            Justify-content : center ;
+            Gap : 20px ;
+            Animation : fadeInUp 1s ease 0.4s forwards ;
+            Opacity : 0 ;
+        }
+        
+        .btn {
+            Padding : 14px 32px ;
+            Border-radius : 50px ;
+            Text-decoration : none ;
+            Font-weight : 600 ;
+            Transition : var(--transition) ;
+            Display : inline-block ;
+            Position : relative ;
+            Overflow : hidden ;
+        }
+        
+        .btn ::before {
+            Content : ‘’ ;
+            Position : absolute ;
+            Top : 0 ;
+            Left : -100% ;
+            Width : 100% ;
+            Height : 100% ;
+            Background : linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent) ;
+            Transition : var(--transition) ;
+        }
+        
+        .btn :hover ::before {
+            Left : 100% ;
+        }
+        
+        .btn-primary {
+            Background-color : var(--primary) ;
+            Color : white ;
+            Box-shadow : 0 4px 15px rgba(74, 134, 232, 0.3) ;
+        }
+        
+        .btn-primary :hover {
+            Background-color : var(--secondary) ;
+            Transform : translateY(-3px) ;
+            Box-shadow : 0 10px 25px rgba(74, 134, 232, 0.4) ;
+        }
+        
+        .btn-outline {
+            Border : 2px solid var(--primary) ;
+            Color : var(--primary) ;
+        }
+        
+        .btn-outline :hover {
+            Background-color : var(--primary) ;
+            Color : white ;
+            Transform : translateY(-3px) ;
+            Box-shadow : 0 10px 25px rgba(74, 134, 232, 0.3) ;
+        }
+        
+        /* Sections */
+        Section {
+            Padding : 100px 0 ;
+        }
+        
+        .section-title {
+            Text-align : center ;
+            Margin-bottom : 60px ;
+        }
+        
+        .section-title h2 {
+            Font-size : 2.5rem ;
+            Color : var(--dark) ;
+            Margin-bottom : 20px ;
+            Position : relative ;
+            Display : inline-block ;
+        }
+        
+        .section-title h2 ::after {
+            Content : ‘’ ;
+            Position : absolute ;
+            Bottom : -10px ;
+            Left : 50% ;
+            Transform : translateX(-50%) ;
+            Width : 80px ;
+            Height : 4px ;
+            Background-color : var(--accent) ;
+            Border-radius : 2px ;
+        }
+        
+        /* About Section */
+        .about-content {
+            Display : flex ;
+            Align-items : center ;
+            Gap : 50px ;
+        }
+        
+        .about-text {
+            Flex : 1 ;
+        }
+        
+        .about-text p {
+            Margin-bottom : 20px ;
+            Font-size : 1.1rem ;
+            Line-height : 1.8 ;
+        }
+        
+        .about-image {
+            Flex : 1 ;
+            Border-radius : 20px ;
+            Overflow : hidden ;
+            Box-shadow : 0 20px 40px rgba(0, 0, 0, 0.1) ;
+            Position : relative ;
+        }
+        
+        .about-image ::before {
+            Content : ‘’ ;
+            Position : absolute ;
+            Top : 0 ;
+            Left : 0 ;
+            Width : 100% ;
+            Height : 100% ;
+            Background : linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%) ;
+            Opacity : 0.1 ;
+            z-index : 1 ;
+        }
+        
+        .about-image img {
+            Width : 100% ;
+            Height : auto ;
+            Display : block ;
+            Transition : transform 0.5s ;
+        }
+        
+        .about-image :hover img {
+            Transform : scale(1.05) ;
+        }
+        
+        .cv-download {
+            Margin-top : 30px ;
+            Display : inline-flex ;
+            Align-items : center ;
+            Gap : 10px ;
+        }
+        
+        /* Skills Section */
+        .skills-container {
+            Display : grid ;
+            Grid-template-columns : repeat(auto-fit, minmax(300px, 1fr)) ;
+            Gap : 30px ;
+        }
+        
+        .skill-category {
+            Background-color : rgba(255, 255, 255, 0.8) ;
+            Padding : 30px ;
+            Border-radius : 15px ;
+            Box-shadow : 0 10px 30px rgba(0, 0, 0, 0.05) ;
+            Transition : var(--transition) ;
+            Backdrop-filter : blur(10px) ;
+        }
+        
+        .dark-mode .skill-category {
+            Background-color : rgba(26, 32, 44, 0.8) ;
+        }
+        
+        .skill-category :hover {
+            Transform : translateY(-10px) ;
+            Box-shadow : 0 15px 35px rgba(0, 0, 0, 0.1) ;
+        }
+        
+        .skill-category h3 {
+            Font-size : 1.5rem ;
+            Margin-bottom : 20px ;
+            Color : var(--primary) ;
+        }
+        
+        .skill-item {
+            Margin-bottom : 20px ;
+        }
+        
+        .skill-info {
+            Display : flex ;
+            Justify-content : space-between ;
+            Margin-bottom : 8px ;
+        }
+        
+        .skill-bar {
+            Height : 10px ;
+            Background-color : #e5e7eb ;
+            Border-radius : 5px ;
+            Overflow : hidden ;
+        }
+        
+        .dark-mode .skill-bar {
+            Background-color : #4a5568 ;
+        }
+        
+        .skill-progress {
+            Height : 100% ;
+            Background : linear-gradient(90deg, var(--primary), var(--secondary)) ;
+            Border-radius : 5px ;
+            Width : 0 ;
+            Transition : width 1s ease-in-out ;
+        }
+        
+        /* Experience Section */
+        .timeline {
+            Position : relative ;
+            Max-width : 1000px ;
+            Margin : 0 auto ;
+        }
+        
+        .timeline ::after {
+            Content : ‘’ ;
+            Position : absolute ;
+            Width : 6px ;
+            Background : linear-gradient(to bottom, var(--primary), var(--accent)) ;
+            Top : 0 ;
+            Bottom : 0 ;
+            Left : 50% ;
+            Margin-left : -3px ;
+            Border-radius : 10px ;
+        }
+        
+        .timeline-item {
+            Padding : 10px 40px ;
+            Position : relative ;
+            Width : 50% ;
+            Box-sizing : border-box ;
+            Opacity : 0 ;
+            Transform : translateY(50px) ;
+            Transition : opacity 0.5s ease, transform 0.5s ease ;
+        }
+        
+        .timeline-item.visible {
+            Opacity : 1 ;
+            Transform : translateY(0) ;
+        }
+        
+        .timeline-item :nth-child(odd) {
+            Left : 0 ;
+            Animation : slideInLeft 0.5s ease forwards ;
+        }
+        
+        .timeline-item :nth-child(even) {
+            Left : 50% ;
+            Animation : slideInRight 0.5s ease forwards ;
+        }
+        
+        .timeline-content {
+            Padding : 25px ;
+            Background-color : white ;
+            Border-radius : 10px ;
+            Box-shadow : 0 5px 20px rgba(0, 0, 0, 0.1) ;
+            Position : relative ;
+        }
+        
+        .dark-mode .timeline-content {
+            Background-color : #2d3748 ;
+        }
+        
+        .timeline-content ::before {
+            Content : ‘’ ;
+            Position : absolute ;
+            Width : 20px ;
+            Height : 20px ;
+            Background : var(--primary) ;
+            Top : 20px ;
+            Border-radius : 50% ;
+        }
+        
+        .timeline-item :nth-child(odd) .timeline-content ::before {
+            Right : -40px ;
+        }
+        
+        .timeline-item :nth-child(even) .timeline-content ::before {
+            Left : -40px ;
+        }
+        
+        .timeline-date {
+            Font-weight : 600 ;
+            Color : var(--primary) ;
+            Margin-bottom : 10px ;
+            Display : flex ;
+            Align-items : center ;
+            Gap : 8px ;
+        }
+        
+        .timeline-content h3 {
+            Margin-bottom : 10px ;
+            Color : var(--dark) ;
+        }
+        
+        .timeline-content p {
+            Color : var(--gray) ;
+        }
+        
+        /* Projects Section */
+        .projects-grid {
+            Display : grid ;
+            Grid-template-columns : repeat(auto-fit, minmax(350px, 1fr)) ;
+            Gap : 30px ;
+        }
+        
+        .project-card {
+            Background-color : white ;
+            Border-radius : 15px ;
+            Overflow : hidden ;
+            Box-shadow : 0 10px 30px rgba(0, 0, 0, 0.05) ;
+            Transition : var(--transition) ;
+            Opacity : 0 ;
+            Transform : translateY(50px) ;
+        }
+        
+        .dark-mode .project-card {
+            Background-color : #2d3748 ;
+        }
+        
+        .project-card.visible {
+            Opacity : 1 ;
+            Transform : translateY(0) ;
+        }
+        
+        .project-card :hover {
+            Transform : translateY(-10px) ;
+            Box-shadow : 0 15px 35px rgba(0, 0, 0, 0.1) ;
+        }
+        
+        .project-image {
+            Height : 200px ;
+            Overflow : hidden ;
+            Position : relative ;
+        }
+        
+        .project-image ::before {
+            Content : ‘’ ;
+            Position : absolute ;
+            Top : 0 ;
+            Left : 0 ;
+            Width : 100% ;
+            Height : 100% ;
+            Background : linear-gradient(135deg, var(--primary) 0%, transparent 100%) ;
+            Opacity : 0.3 ;
+            z-index : 1 ;
+            transition : var(--transition) ;
+        }
+        
+        .project-card :hover .project-image ::before {
+            Opacity : 0.7 ;
+        }
+        
+        .project-image img {
+            Width : 100% ;
+            Height : 100% ;
+            Object-fit : cover ;
+            Transition : transform 0.5s ;
+        }
+        
+        .project-card :hover .project-image img {
+            Transform : scale(1.1) ;
+        }
+        
+        .project-content {
+            Padding : 25px ;
+            Position : relative ;
+            z-index : 2 ;
+        }
+        
+        .project-content h3 {
+            Margin-bottom : 15px ;
+            Color : var(--dark) ;
+        }
+        
+        .project-tags {
+            Display : flex ;
+            Flex-wrap : wrap ;
+            Gap : 10px ;
+            Margin-bottom : 15px ;
+        }
+        
+        .project-tag {
+            Background-color : #dbeafe ;
+            Color : var(--primary) ;
+            Padding : 5px 12px ;
+            Border-radius : 20px ;
+            Font-size : 0.85rem ;
+            Font-weight : 500 ;
+        }
+        
+        .dark-mode .project-tag {
+            Background-color : #2c5282 ;
+            Color : #ebf8ff ;
+        }
+        
+        /* GitHub Section */
+        .github-section {
+            Text-align : center ;
+            Padding : 60px 0 ;
+            Background : linear-gradient(135deg, rgba(240, 249, 255, 0.5) 0%, rgba(224, 242, 254, 0.5) 100%) ;
+            Border-radius : 20px ;
+            Margin : 40px 0 ;
+        }
+        
+        .dark-mode .github-section {
+            Background : linear-gradient(135deg, rgba(26, 32, 44, 0.5) 0%, rgba(45, 55, 72, 0.5) 100%) ;
+        }
+        
+        .github-section h2 {
+            Margin-bottom : 20px ;
+        }
+        
+        .github-section p {
+            Max-width : 600px ;
+            Margin : 0 auto 30px ;
+            Color : var(--gray) ;
+        }
+        
+        /* Contact Section */
+        .contact-container {
+            Display : grid ;
+            Grid-template-columns : repeat(auto-fit, minmax(300px, 1fr)) ;
+            Gap : 50px ;
+        }
+        
+        .contact-info {
+            Display : flex ;
+            Flex-direction : column ;
+            Gap : 25px ;
+        }
+        
+        .contact-item {
+            Display : flex ;
+            Align-items : center ;
+            Gap : 15px ;
+            Padding : 20px ;
+            Background-color : rgba(255, 255, 255, 极速飞艇
+            Border-radius : 10px ;
+            Box-shadow : 0 5px 15px rgba(0, 0, 0, 0.05) ;
+            Transition : var(--transition) ;
+            Backdrop-filter : blur(10px) ;
+        }
+        
+        .dark-mode .contact-item {
+            Background-color : rgba(26, 32, 44, 0.8) ;
+        }
+        
+        .contact-item :hover {
+            Transform : translateY(-5px) ;
+            Box-shadow : 0 10px 25px rgba(0, 0, 0, 0.1) ;
+        }
+        
+        .contact-icon {
+            Width : 50px ;
+            Height : 50px ;
+            Background : linear-gradient(135deg, var(--primary), var(--accent)) ;
+            Color : white ;
+            Border-radius : 50% ;
+            Display : flex ;
+            Align-items : center ;
+            Justify-content : center ;
+            Font-size : 极速飞艇
+        }
+        
+        .contact-form {
+            Background-color : white ;
+            Padding : 30px ;
+            Border-radius : 15px ;
+            Box-shadow : 0 10px 30px rgba(0, 0, 0, 0.05) ;
+        }
+        
+        .dark-mode .contact-form {
+            Background-color : #2d3748 ;
+        }
+        
+        .form-group {
+            Margin-bottom : 20px ;
+        }
+        
+        .form-group label {
+            Display : block ;
+            Margin-bottom : 8px ;
+            Font-weight : 500 ;
+        }
+        
+极速飞艇        .form-control {
+            Width : 100% ;
+            Padding : 12px 15px ;
+            Border : 1px solid #e5e7eb ;
+            Border-radius : 8px ;
+            Font-size : 1rem ;
+            Transition : var(--transition) ;
+            Background-color : #f9fafb ;
+        }
+        
+        .dark-mode .form-control {
+            Background-color : #4a5568 ;
+            Border-color : #2d3748 ;
+            Color : white ;
+        }
+        
+        .form-control :focus {
+            Outline : none ;
+            Border-color : var(--primary) ;
+            Box-shadow : 0 0 0 3px rgba(74, 134, 232, 0.2) ;
+        }
+        
+        Textarea.form-control {
+            Min-height : 150px ;
+            Resize : vertical ;
+        }
+        
+        /* Footer */
+        Footer {
+            Background-color : var(--dark) ;
+            Color : white ;
+            Padding : 60px 0 30px ;
+        }
+        
+        .dark-mode footer {
+            Background-color : #1a202c ;
+        }
+        
+        .footer-content {
+极速飞艇            display : grid ;
+            Grid-template-columns : repeat(auto-fit, minmax(250px, 1fr)) ;
+            Gap : 40px ;
+            Margin-bottom : 40px ;
+        }
+        
+        .footer-logo {
+            Font-size : 1.8rem ;
+            Font-weight : 700 ;
+            Color : white ;
+            Margin-bottom : 20px ;
+            Display : flex ;
+            Align-items : center ;
+        }
+        
+        .footer-logo span {
+            Color : var(--accent) ;
+        }
+        
+        .social-links {
+            Display : flex ;
+            Gap : 15px ;
+            Margin-top : 20px ;
+        }
+        
+        .social-link {
+            Width : 40px ;
+            Height : 40px ;
+            Background-color : rgba(255, 255, 255, 0.1) ;
+            Border-radius : 50% ;
+            Display : flex ;
+            Align-items : center ;
+            Justify-content : center ;
+            Color : white ;
+            Text-decoration : none ;
+            Transition : var(--transition) ;
+        }
+        
+        .social-link :hover {
+            Background-color : var(--primary) ;
+            Transform : translateY(-3px) ;
+        }
+        
+        .footer极速飞艇-links h3 {
+            Margin-bottom : 20px ;
+            Font-size : 1.2rem ;
+        }
+        
+        .footer-links ul {
+            List-style : none ;
+        }
+        
+        .footer-links li {
+            Margin-bottom : 10px ;
+        }
+        
+        .footer-links a {
+            Color : #d1d5db ;
+            Text-decoration : none ;
+            Transition : var(--transition) ;
+            Display : flex ;
+            Align-items : center ;
+            Gap : 8px ;
+        }
+        
+        .footer-links a :hover {
+            Color : white ;
+            Gap : 12px ;
+        }
+        
+        .copyright {
+            Text-align : center ;
+            Padding-top : 30px ;
+            Border极速飞艇-top : 1px solid rgba(255, 255, 255, 0.1) ;
+            Color : #9ca3af ;
+            Display : flex ;
+            Justify-content : center ;
+            Align-items : center ;
+            Gap : 10px ;
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            From {
+                Opacity : 0 ;
+                Transform : translateY(20px) ;
+            }
+            To {
+                Opacity : 1 ;
+                Transform : translateY(0) ;
+            }
+        }
+        
+        @keyframes fadeInUp {
+            From {
+                Opacity : 0 ;
+                Transform : translateY(30px) ;
+            }
+            To {
+                Opacity : 1 ;
+                Transform : translateY(0) ;
+            }
+        }
+        
+        @keyframes slideInLeft {
+            From {
+                Opacity : 0 ;
+                Transform : translateX(-50极速飞艇px) ;
+            }
+            To {
+                Opacity : 1 ;
+                Transform : translateX(0) ;
+            }
+        }
+        
+        @keyframes slide极速飞艇InRight {
+            From {
+                Opacity : 0 ;
+                Transform : translateX(50px) ;
+            }
+            To {
+                Opacity : 1 ;
+                Transform : translateX(0) ;
+极速飞艇            }
+        }
+        
+        @keyframes rotate {
+            From {
+                Transform : rotate(0deg) ;
+            }
+            To {
+                Transform : rotate(360deg) ;
+            }
+        }
+        
+        .fade-in {
+            Animation : fadeIn 1s ease forwards ;
+        }
+        
+        /* Scroll to top button */
+        .scroll-top {
+            Position : fixed ;
+            Bottom : 30px ;
+            Right : 30px ;
+            Width : 50px ;
+            Height : 50px ;
+            Background : linear-gradient(135deg, var(--primary), var(--accent)) ;
+            Color : white ;
+            Border-radius : 50% ;
+            Display : flex ;
+            Align-items : center ;
+            Justify-content : center ;
+            Font-size : 1.2rem ;
+            Cursor : pointer ;
+            Opacity : 0 ;
+            Visibility : hidden ;
+            Transition : var(--transition) ;
+            Box-shadow : 0 5极速飞艇px 15px rgba(0, 0, 0, 0.1) ;
+            z-index : 999 ;
+        }
+        
+        .scroll-top.active {
+            Opacity : 1 ;
+            Visibility : visible ;
+        }
+        
+        .scroll-top :hover {
+            Transform : translateY(-5px) ;
+            Box-shadow : 0 8px 20px rgba(0, 0, 0, 0.2) ;
+        }
+        
+        /* Responsive Design */
+        @media (max-width : 992px) {
+            .about-content {
+                Flex-direction : column ;
+            }
+            
+            .timeline ::after {
+                Left : 31px ;
+            }
+            
+            .timeline-item {
+                Width : 100% ;
+                Padding-left : 70px ;
+                Padding-right : 25px ;
+            }
+            
+            .timeline-item :nth-child(even) {
+                Left : 0 ;
+            }
+            
+            .timeline-item :nth-child(odd) .timeline-content ::before,
+            .timeline-item :nth-child(even) .timeline-content ::before {
+                Left : -40px ;
+            }
+        }
+        
+        @media (max-width : 768px) {
+            .nav-links {
+                Position : fixed ;
+                Top : 80px ;
+                Left : -100% ;
+                Width : 100% ;
+                Height : calc(100vh – 80px) ;
+                Background-color : white ;
+                Flex-direction : column ;
+                Align-items : center ;
+                Justify-content : center ;
+                Transition : var(--transition) ;
+                Gap : 30px ;
+            }
+            
+            .dark-mode .nav极速飞艇-links {
+                Background-color : #1a202c ;
+            }
+            
+            .nav-links.active {
+                Left : 0 ;
+            }
+            
+            .hamburger {
+                Display : block ;
+            }
+            
+            .hero h1 {
+                Font-size : 2.5rem ;
+            }
+            
+            .hero-buttons {
+                Flex-direction : column ;
+                Align-items : center ;
+            }
+            
+            .section-title h2 {
+                Font-size : 2rem ;
+            }
+            
+            .contact-container {
+                Grid-template-columns : 1fr ;
+            }
+        }
+    </style>
+</head>
+<body>
+    < !—Header & Navigation 
+    <header>
+        <div class= »container »>
+            <nav>
+                <div class= »logo »>Daniel <span>Titi</span> Jr.</div>
+                <ul class= »nav-links »>
+                    <li><a href= »#about »>À propos</a></li>
+                    <li><a href= »#skills »>Compétences</a></li>
+                    <li><a href= »#experience »>Expérience</a></li>
+                    <li><a href= »#projects »>Projets</a></li>
+                    <li><a href= »#contact »>Contact</a></li>
+                </ul>
+                <button class= »theme-toggle » id= »themeToggle »>
+                    <i class= »fas fa-moon »></i>
+                </button>
+                <div class= »hamburger »>
+                    <i class= »fas极速飞艇 fa-bars »></i>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    < !—Hero Section 
+    <section class= »hero »>
+        <极速飞艇div class= »container »>
+            <div class= »hero-content »>
+                <h1>Développeur Full-Stack Passionné</h1>
+                <p>Je conçois et développe des applications web performantes avec plus d’1 an d’expérience en technologies front-end et back-end.</p>
+                <div class= »hero-buttons »>
+                    <a href= »#projects » class= »btn btn-primary »>Voir mes projets</a>
+                    <a href= »#contact »极速飞艇 class= »btn btn-outline »>Me contacter</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    < !—About Section 
+    <section id= »about » class= »about »>
+        <div class= »container »>
+            <div class= »section-title »>
+                <h2>À propos de moi</h2>
+            </div>
+            <div class= »about-content »>
+                <div class= »about-text »>
+                    <p>Je suis un étudiant motivé et dynamique qui cherche à acquérir des compétences pratiques et à contribuer à la réussite d’une entreprise lors d’un stage dans le domaine de la technologie.</p>
+                    <p>Je suis prêt à apprendre et à travailler en équipe pour atteindre les objectifs de l’entreprise. Passionné par le développement web et les nouvelles technologies, je consacre mon temps libre à me perfectionner et à réaliser des projets personnels.</p>
+                    <p> Nationalité : Camerounaise<br>
+                     Genre : Masculin<br>
+                    ️ Langues : Français (excellent), Anglais (niveau moyen)</p>
+                    <a href= »# » class= »btn btn-primary cv-download »>
+                        <i class= »fas fa-download »></i> Télécharger mon CV
+                    </a>
+                </div>
+                <div class= »about-image »>
+                    <img src= »https://images.unsplash.com/photo-150极速飞艇7003211169-0a1dd7228f2d ?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=774&q=80 » alt= »Daniel Titi Junior »>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    < !—Skills Section 
+    <section id= »skills » class= »skills »>
+        <div class= »container »>
+            <div class= »section-title »>
+                <h2>Mes compétences</h2>
+            </div>
+            <div class= »skills-container »>
+                <div class= »skill-category »>
+                    <h3>Frontend</极速飞艇h3>
+                    <div class= »skill-item »>
+                        <div class= »skill-info »>
+                            <span>HTML5/CSS3</span>
+                            <span>80%</span>
+                        </div>
+                        <div class= »skill-bar »>
+                            <div class= »skill-progress » data-width= »80 »></div>
+                        </div>
+                    </div>
+                    <div class= »skill-item »>
+                        <div class= »skill-info »>
+                            <span>JavaScript</span>
+                            <span>60%</span>
+                        </div>
+                        <div class= »skill-bar »>
+                            <div class= »skill-progress » data-width= »60 »></div>
+                        </div>
+                    </div>
+                    <div class= »skill-item »>
+                        <div class= »skill-info »>
+                            <span>React</span>
+                            <span>60%</span>
+                        </div>
+                        <div class= »skill-bar »>
+                            <div class= »skill-progress » data-width= »60 »></div>
+                        </div>
+                    </div>
+                    <div class= »skill-item »>
+                        <div class= »skill-info »>
+                            <span>TypeScript</span>
+                            <span>50%</span>
+                        </div>
+                        <div class= »skill-bar »>
+                            <div class= »skill-progress » data-width= »50 »></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class= »skill-category »>
+                    <h3>Backend</h3>
+                    <div class= »skill-item »>
+                        <div class= »skill-info »>
+                            <span>Node.js</span>
+                            <span>60%</span>
+                        </div>
+                        <div class= »skill-bar »>
+                            <div class= »skill-progress » data-width= »60 »></div>
+                        </div>
+                    </极速飞艇div>
+                    <div class= »skill-item »>
+                        <div class= »skill极速飞艇-info »>
+                            <span>PHP</span>
+                            <span>40%</span>
+                        </div>
+                        <div class= »skill-bar »>
+                            <div class= »skill-progress » data-width极速飞艇= »40 »></极速飞艇div>
+                        </div>
+                    </div>
+                    <div class= »skill-item »>
+                        <div class= »skill-info »>
+                            <span>Python</span>
+                            <span>50%</span>
+                        </div>
+                        <div class= »skill-bar »>
+                            <div class= »skill-progress » data-width= »50 »></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class= »skill-category »>
+                    <h3>Autres technologies</h3>
+                    <div class= »skill-item »>
+                        <div class= »skill-info »>
+                            <span>MySQL</span>
+                            <span>70%</span>
+                        </div>
+                        <div class= »skill-bar »>
+                            <div class= »skill-progress » data-width= »70 »></div>
+                        </div>
+                    </div>
+                    <div class= »skill-item »>
+                        <div class= »skill-info »>
+                            <span>GitHub Actions & CI/CD</span>
+                            <span>65%</span>
+                        </div>
+                        <div class= »skill-bar »>
+                            <div class= »skill-progress » data-width= »65 »></div>
+                        </div>
+                    </div>
+                    <div class= »skill-item »>
+                        <div class= »skill-info »>
+                            <span>WordPress</span>
+                            <span>75%</span>
+                        </div>
+                        <div class= »skill-bar »>
+                            <div class= »skill-progress » data-width= »75 »></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    < !—Experience Section 
+    <section id= »experience » class= »experience »>
+        <div class= »container »>
+            <div class= »section-title »>
+                <h2>Mon expérience</h2>
+            </div>
+            <div class= »timeline »>
+                <div class= »timeline-item »>
+                    <div class= »timeline-content »>
+                        <div class= »timeline-date »><i class= »far fa-calendar-alt »></i> Sept 2022 – Déc 2023</div>
+                        <h3>Développeur Full Stack – TechNova</h3>
+                        <p>Conception d’une interface de modélisation avec UML. Déploiement continu sur AWS avec Docker & GitLab. Stack : Symfony, Vue.js, PostgreSQL, AWS.</p>
+                    </div>
+                </div>
+                <div class= »timeline-item »>
+                    <div class= »timeline-content »>
+                        <div class= »timeline-date »><i class= »far fa-calendar-alt »></i> Juin 2022 – Août 2023</div>
+                        <h3>Développeur Web – Digit’Apps</h3>
+                        <p>Participation à des projets web clients (sites vitrines, apps métiers, back-office). Intégration HTML/CSS, développement PHP Laravel, support technique, JavaScript.</极速飞艇p>
+                    </div>
+                </div>
+                <div class= »timeline-item »>
+                    <div class= »timeline-content »>
+                        <div class= »timeline-date »><i class= »far fa-calendar-alt »></i> Juil 2022 – Sept 2022</div>
+                        <h3>Serveur – Supermarché Clovis</h3>
+                        <p>Gestion et maintenance des serveurs et des systèmes informatiques. Installation et configuration de logiciels et de matériels. Sécurité et sauvegarde des données.</p>
+                    </div>
+                </div>
+                <div class= »timeline-item »>
+                    <div class= »timeline-content »>
+                        <div class= »timeline-date »><i class= »far fa-calendar-alt »></极速飞艇i> Jan 2020 – Juil 2020</div>
+                        <h3>Technicien en Maintenance – Ets Blezo</h3>
+                        <p>Réparation et maintenance des appareils électriques et électroniques. Diagnostic des problèmes et identification des pièces à remplacer.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    < !—Projects Section 
+    <section id= »projects » class= »projects »>
+        <div class= »container »>
+            <div class= »section-title »>
+                <h2>Mes projets</h2>
+            </div>
+            <div class= »projects-grid »>
+                <div class= »project-card »>
+                    <div class= »project-image »>
+                        <img src= »https://images.unsplash.com/photo-1531403009284-440f080d1e12 ?ixlib=rb-4.0.3&极速飞艇ixid=M3wxMjA极速飞艇3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8f极速飞艇Hx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80 » alt= »Restauration WordPress »>
+                    </div>
+                    <div class= »project-content »>
+                        <h3>Restauration et sécurisation d’un site WordPress</h3>
+                        <div class= »project-tags »>
+                            <span class= »project-tag »>WordPress</span>
+                            <span class= »project-tag »>PHP</span>
+                            <span class= »project-tag »>GitHub Actions</span>
+                            <span class= »project-tag »>CI/CD</span>
+                        </div>
+                        <p>Projet de restauration complète d’un site WordPress avec mise en place d’un pipeline CI/CD pour les tests automatiques et le déploiement sécurisé.</p>
+                        <a href= »# » class= »btn btn-outline »>Voir le projet</a>
+                    </div>
+                </div>
+                
+                <div class= »project-card »>
+                    <div class= »project-image »>
+                        <img src= »https://images.unsplash.com/photo-1551650975-87deedd944c3 ?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfH极速飞艇x8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1674&q=80 » alt= »API Rest »>
+                    </div>
+                    <div class= »project-content »>
+                        <h3>API Rest pour application de gestion de stock</h3>
+                        <div class= »project极速飞艇-tags »>
+                            <span class= »project-tag »>Node.js</span>
+                            <span class= »project-tag »>Express</span>
+                            <span class= »project-tag »>MySQL</span>
+                            <span class= »project-tag »>API Rest</极速飞艇span>
+                        </div>
+                        <p>Développement d’une API Rest complète pour une application de gestion de stock avec authentification, opérations CRUD et documentation détaillée.</p>
+                        <a href= »# » class= »btn btn-outline »>Voir le projet</a>
+                    </div>
+                </div>
+                
+                <div class= »project-card »>
+                    <div class= »project-image »>
+                        <img src= »https://images.unsplash.com/photo-1460925895917-afdab827c52f ?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1715&q=80 » alt= »Sites web responsives »>
+                    </div>
+                    <div class= »project-content »>
+                        <h3>Création de sites web responsives</h3>
+                        <div class= »project-tags »>
+                            <span class= »project-tag »>HTML5</span>
+                            <span class= »project-tag »>CSS3</span>
+                            <span class= »project-tag »>JavaScript</span>
+                            <span class= »project-tag »>React</span>
+                        </div>
+                        <极速飞艇p>Conception et développement de 5 sites web responsives pour des clients locaux avec amélioration de la vitesse de chargement de 30%.</p>
+                        <a href= »# » class= »btn btn-outline »>Voir le projet</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    < !—GitHub Section 
+    <section class= »github-section »>
+        <div class= »container »>
+            <h2>Mes dépôts GitHub</h2>
+            <p>Découvrez mes projets open source et contributions sur GitHub. N’hésitez pas à explorer le code source et à contribuer si vous le souhaitez !</p>
+            <a href= »https://github.com/yourusername » class= »btn btn-primary » target= »_blank »>
+                <i class= »fab fa-github »></i> Voir mon GitHub
+            </a>
+            < !—Vous pouvez ajouter ici une liste de vos dépôts avec l’API GitHub si vous le souhaitez 
+        </div>
+    </section>
+
+    < !—Contact Section 
+    <section id= »contact » class= »contact »>
+        <div class= »container »>
+            <div class= »section-title »>
+                <h2>Contactez-moi</h2>
+            </div>
+            <div class= »contact-container »>
+                <div class= »contact-info »>
+                    <div class= »contact-item »>
+                        <div class= »contact-icon »>
+                            <i class= »fas fa-envelope »></i>
+                        </div>
+                        <div>
+                            <h3>Email</h3>
+                            <p>danieltiti882@gmail.com</p>
+                        </div>
+                    </div>
+                    <div class= »contact-item »>
+                        <div class= »contact-icon »>
+                            <i class= »fas fa-phone »></极速飞艇i>
+                        </div>
+                        <div>
+                            <h3>Téléphone</h3>
+                            <p>+237 691 796 777</p>
+                        </div>
+                    </div>
+                    <div class= »contact-item »>
+                        <div class= »contact-icon »>
+                            <i class= »fas fa-map-marker-alt »></i>
+                        </div>
+                        <div>
+                            <h3>Localisation</h3>
+                            <p>Cameroun</p>
+                        </div>
+                    </div>
+                </div>
+                <div class= »contact-form »>
+                    <form id= »contactForm »>
+                        <div class= »form-group »>
+                            <label for= »name »>Nom complet</label>
+                            <input type= »text » id= »name » class= »form-control » required>
+                        </div>
+                        <div class= »form-group »>
+                            <label for= »email »>Adresse email</label>
+                            <input type= »email » id= »email » class= »form-control » required>
+                        </div>
+                        <div class= »form-group »>
+                            <label for= »subject »>Sujet</label>
+                            <input type= »text » id= »subject » class= »form-control » required>
+                        </div>
+                        <div class= »form-group »>
+                            <label for= »message »>Message</label>
+                            <textarea id= »message » class= »form-control » required></textarea>
+                        </div>
+                        <button type= »submit » class= »btn btn-primary »>Envoyer le message</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    < !—Footer 
+    <footer>
+        <div class= »container »>
+            <div class= »footer-content »>
+                <div class= »footer-about »>
+                    <div class极速飞艇= »footer-logo »>Daniel <span>Titi</span> Junior</div>
+                    <p>Développeur Full-Stack passionné par la création d’applications web performantes et innovantes.</p>
+                    <div class= »social-links »>
+                        <a href= »# » class= »social-link »><i class= »fab fa-github »></i></a>
+                        <a href= »# » class= »social-link »><i class= »fab fa-linkedin-in »></i></a>
+                        <a href= »# » class= »social-link »><i class= »fab fa-twitter »></i></a>
+                    </div>
+                </div>
+                <div class= »footer-links »>
+                    <h3>Liens rapides</h3>
+                    <ul>
+                        <li><a href= »#about »><i class= »fas fa-user »></i> À propos</a></li>
+                        <li><a href= »#skills »><i class= »fas fa-code »></i> Compétences</a></li>
+                        <li><a href= »#experience »><i class= »fas fa-briefcase »></i> Expérience</a></li>
+                        <li><a href= »#projects »><极速飞艇i class= »fas fa-project-diagram »></i> Projets</a></li>
+                        <li><a href= »#contact »><i class= »fas fa-envelope »></i> Contact</a></li>
+                    </ul>
+                </div>
+                <div class= »footer-links »>
+                    <h3>Services</h3>
+                    <ul>
+                        <li><a href= »# »><i class= »fas fa-laptop-code »></i> Développement Web</a></li>
+                        <li><a href= »# »><i class= »fas fa-mobile-alt »></i> Applications Responsives</a></li>
+                        <li><a href= »# »><i class= »fas fa-server »></i> API Rest</a></li>
+                        <li><a href= »# »><i class= »fab fa-wordpress »></i> Maintenance WordPress</a></li>
+                        <li><a href= »# »><i class= »fas fa-code-branch »></i> CI/CD Integration</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class= »copyright »>
+                <p>&copy ; 2023 Daniel Titi Junior. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    < !—Scroll to top button 
+    <div class= »scroll-top » id= »scrollTop »>
+        <i class= »fas fa-arrow-up »></i>
+    </div>
+
+    <script>
+        // Fonctionnalité de basculement de thème
+        Const themeToggle = document.getElementById(‘themeToggle’) ;
+        Const body = document.body ;
+        
+        // Vérifier le thème précédent dans le localStorage
+        If (localStorage.getItem(‘theme’) === ‘dark’) {
+            Body.classList.add(‘dark-mode’) ;
+            themeToggle.innerHTML = ‘<i class= »fas fa-sun »></i>’ ;
+        }
+        
+        themeToggle.addEventListener(‘click’, () => {
+            body.classList.toggle(‘dark-mode’) ;
+            
+            if (body.classList.contains(‘dark-mode’)) {
+                localStorage.setItem(‘theme’, ‘dark’) ;
+                themeToggle.innerHTML = ‘<极速飞艇i class= »fas fa-sun »></i>’ ;
+            } else {
+                localStorage.setItem(‘theme’, ‘light’) ;
+                themeToggle.innerHTML = ‘<i class= »fas fa-moon »></i>’ ;
+            }
+        }) ;
+        
+        // Animation des barres de compétences
+        Document.addEventListener(‘DOMContentLoaded’, function() {
+            Const skillBars = document.querySelectorAll(‘.skill-progress’) ;
+            
+            skillBars.forEach(bar => {
+                const width = bar.getAttribute(‘data-width’) ;
+                bar.style.width = width + ‘%’ ;
+            }) ;
+            
+            // Animation au scroll
+            Const observerOptions = {
+                Threshold : 0.1,
+                rootMargin : ‘0极速飞艇px 0px -50px 0px’
+            } ;
+            
+            Const observer = new IntersectionObserver((entries) => {
+                Entries.forEach(entry => {
+                    If (entry.isIntersecting) {
+                        Entry.target.classList.add(‘fade-in’) ;
+                        
+                        If (entry.target.classList.contains(‘timeline-item’)) {
+                            Entry.target.classList.add(‘visible’) ;
+                        }
+                        
+                        If (entry.target.classList.contains(‘project-card’)) {
+                            Entry.target.classList.add(‘visible’) ;
+                        }
+                    }
+                }) ;
+            }, observerOptions) ;
+            
+            Document.querySelectorAll(‘section, .timeline-item, .project-card’).forEach(item => {
+                Observer.observe(item) ;
+            }) ;
+            
+            // Formulaire de contact avec EmailJS
+            Const contactForm = document.getElementById(‘contactForm’) ;
+            If (contactForm) {
+                contactForm.addEventListener(‘submit’, function€ {
+                    e.preventDefault() ;
+                    
+                    // Récupérer les données du formulaire
+                    Const formData = {
+                        Name : document.getElementById(‘name’).value,
+                        Email : document.getElementById(‘email’).value,
+                        Subject : document.getElementById(‘subject’).value,
+                        Message : document.getElementById(‘message’).value
+                    } ;
+                    
+                    // Envoyer l’email via EmailJS
+                    Emailjs.send(‘YOUR_SERVICE_ID’, ‘YOUR_TEMPLATE_ID’, formData)
+                        .then(function(response) {
+                            Alert(‘Merci pour votre message ! Je vous répondrai dès que possible.’) ;
+                            contactForm.reset() ;
+                        }, function(error) {
+                            Alert(‘Une erreur s\’est produite. Veuillez réessayer ou me contacter directement à danieltiti882@gmail.com’);
+                        }) ;
+                }) ;
+            }
+            
+            // Menu mobile
+            Const hamburger = document.querySelector(‘.hamburger’) ;
+            Const navLinks = document.querySelector(‘.nav-links’) ;
+            
+            If (hamburger) {
+                Hamburger.addEventListener(‘click’, function() {
+                    navLinks.classList.toggle(‘active’) ;
+                    hamburger.innerHTML = navLinks.classList.contains(‘active’) ? 
+                        ‘<i class= »fas fa-times »></i>’ : ‘<i class= »fas fa-bars »></i>’ ;
+                }) ;
+            }
+            
+            // Fermer le menu en cliquant sur un lien
+            Document.querySelectorAll(‘.nav-links a’).forEach(link => {
+                Link.addEventListener(‘click’, function() {
+                    If (window.innerWidth < 768) {
+                        navLinks.classList.remove(‘active’) ;
+                        hamburger.innerHTML = ‘<i class= »fas fa-bars »></i>’ ;
+                    }
+                }) ;
+            }) ;
+            
+            // Bouton de défilement vers le haut
+            Const scrollTopButton = document.getElementById(‘scrollTop’) ;
+            
+            Window.addEventListener(‘scroll’, () => {
+                If (window.pageYOffset > 300) {
+                    scrollTopButton.classList.add(‘active’) ;
+                } else {
+                    scrollTopButton.classList.remove(‘active’) ;
+                }
+            }) ;
+            
+            scrollTopButton.addEventListener(‘click’, ()极速飞艇 => {
+                window.scrollTo({
+                    top : 0,
+                    behavior : ‘smooth’
+                }) ;
+            }) ;
+        }) ;
+    </script>
+</body>
+</html>`) ;
+            Link.download = ‘portfolio_daniel_titi_junior.html’ ;
+            Document.body.appendChild(link) ;
+            Link.click() ;
+            Document.body.removeChild(link) ;
+        }
+
+        // Démarrer le compte à rebours
+        Let count = 5 ;
+        Const countdownElement = document.getElementById(‘count’) ;
+        Const countdownInterval = setInterval(() => {
+            Count-- ;
+            countdownElement.textContent = count ;
+            
+            if (count <= 0) {
+                clearInterval(countdownInterval) ;
+                downloadPortfolio() ;
+            }
+        }, 1000) ;
+
+        // Événement pour le bouton de téléchargement
+        Document.getElementById(‘downloadBtn’).addEventListener(‘click’, function€ {
+            e.preventDefault() ;
+            clearInterval(countdownInterval) ;
+            downloadPortfolio() ;
+        }) ;
+    </script>
+</body>
+</html>

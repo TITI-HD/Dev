@@ -89,6 +89,48 @@ def cleanup_old_backups(days: int = 7):
                     log(f"Supprimé ancien fichier: {file.name}")
                 except Exception as e:
                     log(f"Erreur suppression {file.name}: {e}")
+        
+import gzip
+
+TIMEOUT = int(os.environ.get("BACKUP_TIMEOUT", "30"))
+
+def fetch_url(url: str, timeout: int = TIMEOUT) -> str:
+    """Télécharge une page avec User-Agent et timeout configurable"""
+    try:
+        headers = {'User-Agent': 'WordPress Backup Bot/1.0'}
+        resp = requests.get(url, timeout=timeout, headers=headers)
+        resp.raise_for_status()
+        return resp.text
+    except Exception as e:
+        log(f"ERREUR récupération {url}: {e}")
+        return None
+
+def save_backup(content: str, backup_type: str, extension: str = "html") -> str:
+    """Sauvegarde compressée + métadonnées"""
+    try:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{backup_type}_{timestamp}.{extension}.gz"
+        filepath = os.path.join(BACKUP_DIR, filename)
+
+        with gzip.open(filepath, 'wt', encoding='utf-8') as f:
+            f.write(content)
+
+        content_hash = hashlib.sha256(content.encode('utf-8')).hexdigest()
+        metadata = {
+            "url": SITE_URL,
+            "date": datetime.now().isoformat(),
+            "hash": content_hash,
+            "size": len(content),
+            "compressed_file": filename
+        }
+        with open(filepath + ".meta.json", "w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=2, ensure_ascii=False)
+
+        return filepath
+    except Exception as e:
+        log(f"ERREUR sauvegarde {backup_type}: {e}")
+        return None
+
 
 if __name__ == "__main__":
     backup_wordpress_content()

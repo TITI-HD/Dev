@@ -1,118 +1,112 @@
 #!/usr/bin/env python3
 """
-Script de restauration pour WordPress
-Restaure le contenu à partir des sauvegardes
-Version améliorée pour gérer les anciennes sauvegardes
+Script de restauration WordPress
+- Restaure les fichiers à partir des sauvegardes
+- Vérifie intégrité via hash si les métadonnées existent
+- Compatible Windows et Linux
 """
 
 import os
 import sys
 import json
-import shutil
-from datetime import datetime
-from pathlib import Path
 import hashlib
+from pathlib import Path
+from datetime import datetime
 
+# === Configuration ===
+BACKUP_DIR = "backups"
+RESTORE_DIR = "restored"
+Path(RESTORE_DIR).mkdir(exist_ok=True)
+Path(BACKUP_DIR).mkdir(exist_ok=True)
+LOG_FILE = os.path.join(RESTORE_DIR, "restore.log")
+
+
+# === Logging ===
 def log(message: str):
-    """Fonction de logging avec timestamp"""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    try:
-        print(f"[{timestamp}] {message}")
-    except UnicodeEncodeError:
-        # Si l'encodage échoue (ex: ✅ sur Windows), on remplace par un simple texte
-        print(f"[{timestamp}] {message.encode('ascii', 'replace').decode()}")
+    line = f"[{timestamp}] {message}"
+    print(line)
+    with open(LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(line + "\n")
 
-def verify_backup_integrity(backup_path: str) -> bool:
-    """Vérifie l'intégrité d'un fichier de sauvegarde"""
+
+# === Utilitaires ===
+def compute_hash(file_path: str) -> str:
+    """Calcule le hash SHA256 du fichier"""
+    h = hashlib.sha256()
     try:
-        metadata_path = backup_path + '.meta.json'
-        if not os.path.exists(metadata_path):
-            log(f"ATTENTION: Métadonnées manquantes pour {os.path.basename(backup_path)}")
-            return True
-        with open(metadata_path, 'r', encoding='utf-8') as f:
-            metadata = json.load(f)
-        with open(backup_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        content_hash = hashlib.sha256(content.encode('utf-8')).hexdigest()
-        if content_hash == metadata.get('hash'):
-            log(f"SUCCES: Intégrité vérifiée: {os.path.basename(backup_path)}")
-            return True
-        else:
-            log(f"ERREUR: Hash mismatch: {os.path.basename(backup_path)}")
-            return False
+        with open(file_path, "rb") as f:
+            while chunk := f.read(8192):
+                h.update(chunk)
+        return h.hexdigest()
     except Exception as e:
-        log(f"ERREUR: Impossible de vérifier {os.path.basename(backup_path)}: {e}")
+        log(f"ERREUR hash fichier {file_path}: {e}")
+        return ""
+
+
+def load_metadata(file_path: str) -> dict:
+    """Charge les métadonnées JSON si elles existent"""
+    meta_path = f"{file_path}.json"
+    if not os.path.exists(meta_path):
+        log(f"ATTENTION: Métadonnées manquantes pour {os.path.basename(file_path)}")
+        return {}
+    try:
+        with open(meta_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        log(f"ERREUR lecture métadonnées {meta_path}: {e}")
+        return {}
+
+
+def restore_file(file_path: str):
+    """Restaure un fichier et vérifie l'intégrité si métadonnées présentes"""
+    dest_path = os.path.join(RESTORE_DIR, os.path.basename(file_path))
+    try:
+        # Copier le fichier
+        with open(file_path, "rb") as src, open(dest_path, "wb") as dst:
+            dst.write(src.read())
+        log(f"SUCCES: Fichier restauré: {os.path.basename(file_path)}")
+
+        # Vérifier hash si métadonnées présentes
+        meta = load_metadata(file_path)
+        if "hash" in meta:
+            current_hash = compute_hash(dest_path)
+            if current_hash != meta["hash"]:
+                log(f"ERREUR: Hash mismatch: {os.path.basename(file_path)}")
+            else:
+                log(f"SUCCES: Intégrité vérifiée: {os.path.basename(file_path)}")
+        return True
+    except Exception as e:
+        log(f"ERREUR restauration fichier {os.path.basename(file_path)}: {e}")
         return False
 
-def restore_backups(backup_dir=None):
-    """Restaure les sauvegardes vers le dossier de restauration"""
-    if backup_dir is None:
-        backup_dir = os.environ.get("BACKUP_DIR", "backups")
-    restore_dir = os.environ.get("RESTORE_DIR", "restore")
-
-    Path(restore_dir).mkdir(exist_ok=True)
-
-    if not os.path.exists(backup_dir):
-        log(f"ERREUR: Le dossier de sauvegarde n'existe pas: {backup_dir}")
-        return False
-
-    backup_files = [f for f in os.listdir(backup_dir)
-                    if not f.endswith('.meta.json') and not f.endswith('_report.json')]
-
-    if not backup_files:
-        log("ERREUR: Aucune sauvegarde trouvée")
-        return False
-
-    log(f"INFO: {len(backup_files)} sauvegardes trouvées")
-
-    restored_files = []
-    failed_files = []
-
-    for file in backup_files:
-        backup_path = os.path.join(backup_dir, file)
-        verify_backup_integrity(backup_path)
-        try:
-            restore_path = os.path.join(restore_dir, file)
-            shutil.copy2(backup_path, restore_path)
-
-            metadata_src = backup_path + '.meta.json'
-            metadata_dest = restore_path + '.meta.json'
-            if os.path.exists(metadata_src):
-                shutil.copy2(metadata_src, metadata_dest)
-
-            restored_files.append(file)
-            log(f"SUCCES: Fichier restauré: {file}")
-
-        except Exception as e:
-            log(f"ERREUR: Impossible de restaurer {file}: {e}")
-            failed_files.append(file)
-
-    # Création du rapport
-    restore_report = {
-        "date": datetime.now().isoformat(),
-        "restore_dir": restore_dir,
-        "total_files": len(backup_files),
-        "restored_files": restored_files,
-        "failed_files": failed_files,
-        "success_rate": f"{(len(restored_files)/len(backup_files))*100:.1f}%"
-    }
-
-    report_path = os.path.join(restore_dir, "restore_report.json")
-    with open(report_path, 'w', encoding='utf-8') as f:
-        json.dump(restore_report, f, indent=2, ensure_ascii=False)
-
-    log(f"SUCCES: Restauration terminée: {len(restored_files)}/{len(backup_files)} fichiers restaurés")
-    return len(restored_files) > 0
 
 def main():
-    """Fonction principale"""
-    try:
-        backup_dir = sys.argv[1] if len(sys.argv) > 1 else None
-        success = restore_backups(backup_dir)
-        exit(0 if success else 1)
-    except Exception as e:
-        log(f"ERREUR CRITIQUE: Erreur lors de la restauration: {e}")
-        exit(1)
+    log("=== DÉBUT RESTAURATION ===")
+    success_count = 0
+    files = sorted(Path(BACKUP_DIR).glob("*.*"))  # tous les fichiers
+
+    if not files:
+        log("Aucune sauvegarde trouvée.")
+        sys.exit(1)
+
+    for file_path in files:
+        if restore_file(str(file_path)):
+            success_count += 1
+
+    total_files = len(files)
+    log(f"=== RESTAURATION TERMINÉE: {success_count}/{total_files} fichiers restaurés ===")
+
+    # Sortie du script selon succès
+    if success_count == total_files:
+        sys.exit(0)
+    else:
+        sys.exit(1)
+
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        log(f"ERREUR CRITIQUE: {e}")
+        sys.exit(1)
