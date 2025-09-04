@@ -195,7 +195,7 @@ jobs:
 
   alert:
     runs-on: ubuntu-latest
-    if: failure() # s’exécute uniquement si un job précédent a échoué
+    if: failure()
     steps:
       - name: 🚨 Envoyer alerte GitHub
         uses: actions/github-script@v7
@@ -203,8 +203,7 @@ jobs:
           script: |
             core.setFailed("❌ CI/CD WordPress échoué sur ${{ github.workflow }} [${{ github.run_id }}]")
 
-      # ---- Envoi Email ----
-      - name: 📧 Envoyer email d’alerte
+      - name: 📧 Envoyer email d'alerte
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.SMTP_SERVER }}
@@ -228,96 +227,7 @@ jobs:
 
             -- 
             CI/CD Automatisé
-          # Ajoutez cette section à votre fichier existant
 
-# Nouveau job pour l'exécution continue
-continuous-monitoring:
-  runs-on: ubuntu-latest
-  needs: [validate, backup-test, restore-test, monitoring-test]
-  
-  # Exécuter en continu (toutes les 3 heures)
-  schedule:
-    - cron: '0 */3 * * *'
-  
-  # Permettre l'exécution manuelle
-  workflow_dispatch:
-
-  steps:
-    - uses: actions/checkout@v4
-
-    - name: ⚡ Cache pip
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-
-    - name: 🐍 Configurer Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.11"
-
-    - name: 📦 Installer dépendances
-      run: pip install -r requirements.txt
-
-    - name: 🔍 Lancer monitoring continu
-      run: python monitor.py --scheduled &
-      env:
-        SITE_URL: ${{ env.SITE_URL }}
-        SMTP_USER: ${{ secrets.SMTP_USER }}
-        SMTP_PASS: ${{ secrets.SMTP_PASS }}
-        ALERT_EMAIL: ${{ secrets.ADMIN_EMAIL }}
-
-    - name: ⏰ Attendre et générer rapport
-      run: |
-        sleep 300  # Attendre 5 minutes
-        python report_generator.py
-        python monitor.py --once
-
-    - name: 📤 Télécharger rapports
-      uses: actions/upload-artifact@v4
-      with:
-        name: monitoring-reports-${{ github.run_id }}
-        path: |
-          monitor_data/
-          comprehensive_report_*.txt
-
-# Nouveau job pour les rapports quotidiens
-daily-report:
-  runs-on: ubuntu-latest
-  needs: continuous-monitoring
-  
-  # Exécuter une fois par jour
-  schedule:
-    - cron: '0 8 * * *'  # Tous les jours à 8h00
-  
-  steps:
-    - uses: actions/checkout@v4
-
-    - name: 📥 Télécharger les données de monitoring
-      uses: actions/download-artifact@v4
-      with:
-        name: monitoring-reports-${{ github.run_id }}
-        path: monitor_data
-
-    - name: 📊 Générer rapport quotidien
-      run: |
-        python report_generator.py --days 1
-        python report_generator.py --days 7
-
-    - name: 📧 Envoyer rapport par email
-      uses: dawidd6/action-send-mail@v3
-      with:
-        server_address: ${{ secrets.SMTP_SERVER }}
-        server_port: ${{ secrets.SMTP_PORT }}
-        username: ${{ secrets.SMTP_USER }}
-        password: ${{ secrets.SMTP_PASS }}
-        subject: "📊 Rapport Quotidien Surveillance WordPress"
-        to: ${{ secrets.ADMIN_EMAIL }}
-        from: "wordpress-monitor@github-actions.com"
-        body: file://monitor_data/reports/comprehensive_report_*.txt
-      # ---- Notification Slack ----
       - name: 💬 Envoyer alerte Slack
         uses: rtCamp/action-slack-notify@v2
         env:
@@ -330,3 +240,80 @@ daily-report:
             🔗 Repo: ${{ github.repository }}
             🔢 Run ID: ${{ github.run_id }}
             📌 Branche: ${{ github.ref }}
+
+  continuous-monitoring:
+    runs-on: ubuntu-latest
+    needs: [validate, backup-test, restore-test, monitoring-test]
+    schedule:
+      - cron: '0 */3 * * *'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ⚡ Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: 🐍 Configurer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 📦 Installer dépendances
+        run: pip install -r requirements.txt
+
+      - name: 🔍 Lancer monitoring continu
+        run: python monitor.py --scheduled &
+        env:
+          SITE_URL: ${{ env.SITE_URL }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          ALERT_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+
+      - name: ⏰ Attendre et générer rapport
+        run: |
+          sleep 300
+          python report_generator.py
+          python monitor.py --once
+
+      - name: 📤 Télécharger rapports
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitoring-reports-${{ github.run_id }}
+          path: |
+            monitor_data/
+            comprehensive_report_*.txt
+
+  daily-report:
+    runs-on: ubuntu-latest
+    needs: continuous-monitoring
+    schedule:
+      - cron: '0 8 * * *'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 📥 Télécharger les données de monitoring
+        uses: actions/download-artifact@v4
+        with:
+          name: monitoring-reports-${{ github.run_id }}
+          path: monitor_data
+
+      - name: 📊 Générer rapport quotidien
+        run: |
+          python report_generator.py --days 1
+          python report_generator.py --days 7
+
+      - name: 📧 Envoyer rapport par email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USER }}
+          password: ${{ secrets.SMTP_PASS }}
+          subject: "📊 Rapport Quotidien Surveillance WordPress"
+          to: ${{ secrets.ADMIN_EMAIL }}
+          from: "wordpress-monitor@github-actions.com"
+          body: file://monitor_data/reports/comprehensive_report_*.txt
