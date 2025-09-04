@@ -1,319 +1,214 @@
-name: WordPress CI/CD - Validation, Sauvegarde et Restauration
+name: WordPress CI/CD - Full Monitoring
 
+# Déclencheurs : push sur main, PR, ou planifié toutes les 3h + rapport quotidien à 08h
 on:
   push:
     branches: ["main"]
   pull_request:
+  schedule:
+    - cron: '0 */3 * * *'   # Monitoring toutes les 3h
+    - cron: '0 8 * * *'     # Rapport quotidien à 08:00
 
+# Variables globales
 env:
   SITE_URL: "https://oupssecuretest.wordpress.com"
   BACKUP_DIR: "backups"
   RESTORE_DIR: "restored-backups"
 
+#############################
+# 1️⃣ Setup Python & dépendances
+#############################
 jobs:
-  validate:
+  setup-python:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: ⚡ Cache pip
         uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: 🐍 Configurer Python
+      - name: 🐍 Installer Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: 📦 Installer les dépendances
-        run: pip install -r requirements.txt
-
-      - name: ✅ Vérifier import des modules
+      - name: 📦 Installer dépendances Python
         run: |
-          python -c "import monitor; print('✅ monitor importé')"
-          python -c "import backup; print('✅ backup importé')"
-          python -c "import restore; print('✅ restore importé')"
-          echo "# 📊 Rapport CI/CD WordPress" > report.md
-          echo "## ✅ Validation réussie" >> report.md
-          echo '{"stage":"validate","status":"success"}' > report.json
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: 📤 Sauvegarder le rapport provisoire
-        uses: actions/upload-artifact@v4
-        with:
-          name: report-part-validate-${{ github.run_id }}
-          path: |
-            report.md
-            report.json
-
-  backup-test:
+#############################
+# 2️⃣ Validation des scripts Python
+#############################
+  validate:
+    needs: setup-python
     runs-on: ubuntu-latest
-    needs: validate
     steps:
       - uses: actions/checkout@v4
-
-      - name: ⚡ Cache pip
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: 🐍 Configurer Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: 📦 Installer les dépendances
-        run: pip install -r requirements.txt
-
-      - name: 💾 Exécuter la sauvegarde WordPress
-        run: python backup.py
-
-      - name: 🔍 Vérifier les sauvegardes
+      - name: ✅ Vérifier imports Python
         run: |
-          echo "## 🔒 Rapport sauvegarde" > report.md
-          if [ -d $BACKUP_DIR ] && [ "$(ls -A $BACKUP_DIR)" ]; then
-            count=$(ls $BACKUP_DIR | wc -l)
-            echo "- ✅ Sauvegarde réussie ($count fichiers)" >> report.md
-            find $BACKUP_DIR/ -type f \( -name "*.html" -o -name "*.xml" \) | head -3 | xargs -r sha256sum >> report.md
-            echo "{\"stage\":\"backup\",\"status\":\"success\",\"files\":$count}" > report.json
-          else
-            echo "❌ Aucune sauvegarde générée" >> report.md
-            echo '{"stage":"backup","status":"failed"}' > report.json
-            exit 1
-          fi
+          python -c "import monitor"
+          python -c "import wp_backup_restore"
+          python -c "import report_generator"
+      - name: 📤 Sauvegarder rapport validation
+        run: |
+          echo "Validation OK" > report_validate.md
+          echo '{"stage":"validate","status":"success"}' > report_validate.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: report-validate-${{ github.run_id }}
+          path: |
+            report_validate.md
+            report_validate.json
 
-      - name: 📤 Sauvegarder artefacts (backups + rapport)
-        uses: actions/upload-artifact@v4
+#############################
+# 3️⃣ Sauvegarde WordPress
+#############################
+  backup:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 💾 Exécuter sauvegarde WordPress
+        run: python wp_backup_restore.py backup
+      - name: 🔍 Vérifier sauvegarde
+        run: |
+          if [ -d "$BACKUP_DIR" ] && [ "$(ls -A $BACKUP_DIR)" ]; then
+            count=$(find "$BACKUP_DIR" -type f | wc -l)
+            echo "Sauvegarde OK ($count fichiers)" > report_backup.md
+            echo "{\"stage\":\"backup\",\"status\":\"success\",\"files\":$count}" > report_backup.json
+          else
+            echo "Échec sauvegarde" > report_backup.md
+            echo '{"stage":"backup","status":"failed"}' > report_backup.json
+            exit 1
+      - uses: actions/upload-artifact@v4
         with:
           name: wordpress-backups-${{ github.run_id }}
           path: |
             $BACKUP_DIR/
-            report.md
-            report.json
+            report_backup.md
+            report_backup.json
 
-  restore-test:
+#############################
+# 4️⃣ Restauration WordPress
+#############################
+  restore:
+    needs: backup
     runs-on: ubuntu-latest
-    needs: backup-test
     steps:
       - uses: actions/checkout@v4
-
-      - name: ⚡ Cache pip
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: 🐍 Configurer Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: 📦 Installer les dépendances
-        run: pip install -r requirements.txt
-
       - name: 📥 Télécharger sauvegardes
         uses: actions/download-artifact@v4
         with:
           name: wordpress-backups-${{ github.run_id }}
           path: $RESTORE_DIR
-
+      - name: 🔄 Exécuter restauration
+        run: python wp_backup_restore.py restore "$RESTORE_DIR"
       - name: 🔍 Vérifier restauration
         run: |
-          echo "## ♻️ Rapport restauration" > report.md
-          if [ -d $RESTORE_DIR ] && [ "$(ls -A $RESTORE_DIR)" ]; then
-            count=$(find $RESTORE_DIR -type f | wc -l)
-            echo "- ✅ Restauration OK ($count fichiers)" >> report.md
-            echo "{\"stage\":\"restore\",\"status\":\"success\",\"files\":$count}" > report.json
+          if [ -d "$RESTORE_DIR" ] && [ "$(ls -A $RESTORE_DIR)" ]; then
+            count=$(find "$RESTORE_DIR" -type f | wc -l)
+            echo "Restauration OK ($count fichiers)" > report_restore.md
+            echo "{\"stage\":\"restore\",\"status\":\"success\",\"files\":$count}" > report_restore.json
           else
-            echo "❌ Restauration échouée - aucun fichier" >> report.md
-            echo '{"stage":"restore","status":"failed"}' > report.json
+            echo "Échec restauration" > report_restore.md
+            echo '{"stage":"restore","status":"failed"}' > report_restore.json
             exit 1
-          fi
-
-      - name: 🔄 Exécuter restauration
-        run: python restore.py $RESTORE_DIR
-
-      - name: 📊 Publier rapport final
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: rapport-final-${{ github.run_id }}
+          name: wordpress-restore-${{ github.run_id }}
           path: |
-            report.md
-            report.json
+            report_restore.md
+            report_restore.json
 
-      - name: 📢 Ajouter au résumé GitHub
-        run: |
-          echo "### 🚀 Rapport Final CI/CD" >> $GITHUB_STEP_SUMMARY
-          cat report.md >> $GITHUB_STEP_SUMMARY
-
-  monitoring-test:
+#############################
+# 5️⃣ Monitoring WordPress
+#############################
+  monitoring:
+    needs: restore
     runs-on: ubuntu-latest
-    needs: restore-test
     steps:
       - uses: actions/checkout@v4
-
-      - name: ⚡ Cache pip
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: 🐍 Configurer Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: 📦 Installer dépendances
-        run: pip install -r requirements.txt
-
-      - name: 🔍 Lancer monitoring
-        run: python monitor.py
-
-      - name: 📤 Export monitoring.json
-        uses: actions/upload-artifact@v4
+      - name: 🔍 Lancer monitoring WordPress
+        run: |
+          mkdir -p monitor_data
+          python monitor.py
+      - uses: actions/upload-artifact@v4
         with:
           name: monitoring-${{ github.run_id }}
           path: monitor_data/
 
+#############################
+# 6️⃣ Health Check
+#############################
   health-check:
+    needs: monitoring
     runs-on: ubuntu-latest
-    needs: monitoring-test
     steps:
       - name: Health Check
-        run: |
-          curl -f $SITE_URL/wp-json/wp/v2/posts || exit 1
+        run: curl -f $SITE_URL/wp-json/wp/v2/posts || exit 1
 
-  alert:
-    runs-on: ubuntu-latest
+#############################
+# 7️⃣ Alertes si échec
+#############################
+  notify:
     if: failure()
+    runs-on: ubuntu-latest
     steps:
-      - name: 🚨 Envoyer alerte GitHub
+      - name: 🚨 Pipeline échoué
         uses: actions/github-script@v7
         with:
           script: |
-            core.setFailed("❌ CI/CD WordPress échoué sur ${{ github.workflow }} [${{ github.run_id }}]")
-
-      - name: 📧 Envoyer email d'alerte
+            core.setFailed("CI/CD WordPress échoué sur ${{ github.workflow }} run ${{ github.run_id }}")
+      - name: 📧 Envoyer email
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.SMTP_SERVER }}
           server_port: ${{ secrets.SMTP_PORT }}
           username: ${{ secrets.SMTP_USER }}
           password: ${{ secrets.SMTP_PASS }}
-          subject: "❌ [CI/CD WordPress] Échec sur ${{ github.workflow }}"
+          subject: "❌ CI/CD WordPress échoué"
           to: ${{ secrets.ADMIN_EMAIL }}
           from: "ci-cd@github-actions.com"
           secure: true
-          body: |
-            Bonjour,
-
-            Le workflow CI/CD WordPress a échoué 🚨
-
-            🔗 Repo: ${{ github.repository }}
-            🔢 Run ID: ${{ github.run_id }}
-            📌 Branche: ${{ github.ref }}
-
-            Vérifie les logs sur GitHub Actions.
-
-            -- 
-            CI/CD Automatisé
-
       - name: 💬 Envoyer alerte Slack
         uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-          SLACK_USERNAME: "CI/CD WordPress Bot"
+          SLACK_USERNAME: "CI/CD Bot"
           SLACK_COLOR: "#ff0000"
-          SLACK_TITLE: "🚨 CI/CD WordPress échoué"
-          SLACK_MESSAGE: |
-            ❌ Le pipeline CI/CD WordPress a échoué
-            🔗 Repo: ${{ github.repository }}
-            🔢 Run ID: ${{ github.run_id }}
-            📌 Branche: ${{ github.ref }}
+          SLACK_TITLE: "CI/CD WordPress échoué"
+          SLACK_MESSAGE: "Le pipeline CI/CD WordPress a échoué. Repo: ${{ github.repository }}, Run ID: ${{ github.run_id }}"
 
-  continuous-monitoring:
-    runs-on: ubuntu-latest
-    needs: [validate, backup-test, restore-test, monitoring-test]
-    schedule:
-      - cron: '0 */3 * * *'
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: ⚡ Cache pip
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: 🐍 Configurer Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: 📦 Installer dépendances
-        run: pip install -r requirements.txt
-
-      - name: 🔍 Lancer monitoring continu
-        run: python monitor.py --scheduled &
-        env:
-          SITE_URL: ${{ env.SITE_URL }}
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS }}
-          ALERT_EMAIL: ${{ secrets.ADMIN_EMAIL }}
-
-      - name: ⏰ Attendre et générer rapport
-        run: |
-          sleep 300
-          python report_generator.py
-          python monitor.py --once
-
-      - name: 📤 Télécharger rapports
-        uses: actions/upload-artifact@v4
-        with:
-          name: monitoring-reports-${{ github.run_id }}
-          path: |
-            monitor_data/
-            comprehensive_report_*.txt
-
+#############################
+# 8️⃣ Rapport quotidien
+#############################
   daily-report:
+    needs: monitoring
     runs-on: ubuntu-latest
-    needs: continuous-monitoring
-    schedule:
-      - cron: '0 8 * * *'
     steps:
       - uses: actions/checkout@v4
-
-      - name: 📥 Télécharger les données de monitoring
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
-          name: monitoring-reports-${{ github.run_id }}
+          name: monitoring-${{ github.run_id }}
           path: monitor_data
-
       - name: 📊 Générer rapport quotidien
-        run: |
-          python report_generator.py --days 1
-          python report_generator.py --days 7
-
-      - name: 📧 Envoyer rapport par email
+        run: python report_generator.py --days 7 > report_7_days.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: daily-report-${{ github.run_id }}
+          path: report_7_days.txt
+      - name: 📧 Envoyer rapport email
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.SMTP_SERVER }}
           server_port: ${{ secrets.SMTP_PORT }}
           username: ${{ secrets.SMTP_USER }}
           password: ${{ secrets.SMTP_PASS }}
-          subject: "📊 Rapport Quotidien Surveillance WordPress"
+          subject: "📊 Rapport quotidien WordPress"
           to: ${{ secrets.ADMIN_EMAIL }}
           from: "wordpress-monitor@github-actions.com"
-          body: file://monitor_data/reports/comprehensive_report_*.txt
+          secure: true
+          body: |
+            Bonjour,
+            Veuillez trouver ci-joint le rapport quotidien de surveillance WordPress.

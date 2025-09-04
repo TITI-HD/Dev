@@ -10,89 +10,84 @@ import glob
 from datetime import datetime, timedelta
 from typing import Dict, List
 
-MONITOR_DIR = "monitor_data"
+MONITOR_DIR = Path("monitor_data")
+REPORTS_DIR = MONITOR_DIR / "reports"
+REPORTS_DIR.mkdir(exist_ok=True, parents=True)
+
+# === Logging ===
+def log(message: str, level: str = "INFO"):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    line = f"[{timestamp}] [{level}] {message}"
+    print(line)
+    log_file = MONITOR_DIR / "report_generator.log"
+    with log_file.open("a", encoding="utf-8") as f:
+        f.write(line + "\n")
 
 def load_incident_history() -> List[Dict]:
-    """Charge l'historique des incidents"""
-    incident_file = os.path.join(MONITOR_DIR, "incident_history.json")
-    if os.path.exists(incident_file):
+    incident_file = MONITOR_DIR / "incident_history.json"
+    if incident_file.exists():
         try:
-            with open(incident_file, 'r', encoding='utf-8') as f:
+            with incident_file.open('r', encoding='utf-8') as f:
                 return json.load(f)
-        except:
+        except Exception as e:
+            log(f"Erreur lecture incident_history.json: {e}", "ERROR")
             return []
     return []
 
 def load_recent_logs(days: int = 7) -> List[str]:
-    """Charge les logs récents"""
-    log_file = os.path.join(MONITOR_DIR, "monitor.log")
+    log_file = MONITOR_DIR / "monitor.log"
     logs = []
-    if os.path.exists(log_file):
-        cutoff_date = datetime.now() - timedelta(days=days)
-        with open(log_file, 'r', encoding='utf-8') as f:
+    if log_file.exists():
+        cutoff = datetime.now() - timedelta(days=days)
+        with log_file.open('r', encoding='utf-8') as f:
             for line in f:
                 try:
-                    # Extraire la date du log
-                    log_date_str = line[1:20]  # Format: [YYYY-MM-DD HH:MM:SS]
-                    log_date = datetime.strptime(log_date_str, "%Y-%m-%d %H:%M:%S")
-                    if log_date >= cutoff_date:
+                    log_date = datetime.strptime(line[1:20], "%Y-%m-%d %H:%M:%S")
+                    if log_date >= cutoff:
                         logs.append(line.strip())
                 except:
                     logs.append(line.strip())
     return logs
 
 def generate_comprehensive_report(days: int = 7) -> str:
-    """Génère un rapport complet consolidé"""
     incidents = load_incident_history()
     logs = load_recent_logs(days)
-    
-    # Filtrer les incidents récents
-    cutoff_date = datetime.now() - timedelta(days=days)
-    recent_incidents = [
-        inc for inc in incidents 
-        if datetime.fromisoformat(inc['timestamp']) >= cutoff_date
-    ]
-    
-    # Compter les incidents par type
+    cutoff = datetime.now() - timedelta(days=days)
+    recent_incidents = [inc for inc in incidents if datetime.fromisoformat(inc['timestamp']) >= cutoff]
+
     incident_counts = {}
     for inc in recent_incidents:
-        inc_type = inc['type']
-        incident_counts[inc_type] = incident_counts.get(inc_type, 0) + 1
-    
-    # Générer le rapport
-    report = "📈 RAPPORT COMPLET DE SURVEILLANCE WORDPRESS\n"
-    report += f"📅 Période: {days} jours\n"
-    report += f"⏰ Généré le: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        incident_counts[inc['type']] = incident_counts.get(inc['type'], 0) + 1
+
+    report = f"📈 RAPPORT COMPLET DE SURVEILLANCE WORDPRESS\n📅 Période: {days} jours\n⏰ Généré le: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
     report += "="*60 + "\n\n"
-    
-    # Résumé des incidents
+
+    # Résumé incidents
     report += "📊 RÉSUMÉ DES INCIDENTS:\n"
     if incident_counts:
-        for inc_type, count in incident_counts.items():
-            report += f"   - {inc_type}: {count} incident(s)\n"
+        for t, c in incident_counts.items():
+            report += f"   - {t}: {c} incident(s)\n"
     else:
         report += "   ✅ Aucun incident récent\n"
     report += "\n"
-    
+
     # Derniers incidents détaillés
-    report += "🔍 DERNIERS INCIDENTS (5 maximum):\n"
+    report += "🔍 DERNIERS INCIDENTS (5 max):\n"
     for inc in recent_incidents[:5]:
         report += f"   - [{inc['timestamp']}] {inc['type']} ({inc['severity']})\n"
     report += "\n"
-    
-    # Statistiques de disponibilité (extrait des logs)
-    availability_logs = [log for log in logs if "Site accessible" in log or "Site inaccessible" in log]
-    up_count = len([log for log in availability_logs if "✅" in log or "accessible" in log])
-    down_count = len([log for log in availability_logs if "❌" in log or "inaccessible" in log])
-    
+
+    # Disponibilité
+    availability_logs = [l for l in logs if "Site accessible" in l or "Site inaccessible" in l]
+    up_count = len([l for l in availability_logs if "✅" in l or "accessible" in l])
+    down_count = len([l for l in availability_logs if "❌" in l or "inaccessible" in l])
     report += "🌐 DISPONIBILITÉ:\n"
     report += f"   - Disponible: {up_count} fois\n"
     report += f"   - Indisponible: {down_count} fois\n"
     if up_count + down_count > 0:
-        uptime_percent = (up_count / (up_count + down_count)) * 100
-        report += f"   - Taux de disponibilité: {uptime_percent:.2f}%\n"
+        report += f"   - Taux de disponibilité: {up_count / (up_count + down_count) * 100:.2f}%\n"
     report += "\n"
-    
+
     # Recommandations
     report += "💡 RECOMMANDATIONS:\n"
     if down_count > 0:
@@ -100,46 +95,30 @@ def generate_comprehensive_report(days: int = 7) -> str:
     if any(inc['severity'] == 'high' for inc in recent_incidents):
         report += "   - Traiter en priorité les incidents de sécurité\n"
     if len(recent_incidents) > 10:
-        report += "   - Réviser la configuration du site (trop d'incidents)\n"
+        report += "   - Réviser la configuration du site\n"
     else:
         report += "   - Configuration globale satisfaisante\n"
-    
+
     return report
 
-def save_report(report: str, filename: str = None):
-    """Sauvegarde le rapport dans un fichier"""
+def save_report(report: str, filename: str = None) -> str:
     if filename is None:
         filename = f"comprehensive_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-    
-    reports_dir = os.path.join(MONITOR_DIR, "reports")
-    os.makedirs(reports_dir, exist_ok=True)
-    
-    report_path = os.path.join(reports_dir, filename)
-    with open(report_path, 'w', encoding='utf-8') as f:
+    report_path = REPORTS_DIR / filename
+    with report_path.open('w', encoding='utf-8') as f:
         f.write(report)
-    
-    return report_path
+    return str(report_path)
 
-def cleanup_old_logs():
-    """Nettoie les anciens fichiers de log selon la rétention configurée"""
-    retention_days = int(os.environ.get("LOG_RETENTION_DAYS", 30))
-    cutoff_time = datetime.now() - timedelta(days=retention_days)
-    
-    log_files = [
-        os.path.join(MONITOR_DIR, "monitor.log"),
-        *glob.glob(os.path.join(MONITOR_DIR, "report_*.txt")),
-        *glob.glob(os.path.join(MONITOR_DIR, "reports", "comprehensive_report_*.txt"))
-    ]
-    
-    for log_file in log_files:
-        if os.path.exists(log_file):
-            file_time = datetime.fromtimestamp(os.path.getmtime(log_file))
-            if file_time < cutoff_time:
-                os.remove(log_file)
-                log(f"Fichier log nettoyé: {log_file}", "INFO")
-                
+def cleanup_old_logs(retention_days: int = 30):
+    cutoff = datetime.now() - timedelta(days=retention_days)
+    log_files = list(MONITOR_DIR.glob("monitor.log")) + list(MONITOR_DIR.glob("report_*.txt")) + list(REPORTS_DIR.glob("comprehensive_report_*.txt"))
+    for f in log_files:
+        if f.exists() and datetime.fromtimestamp(f.stat().st_mtime) < cutoff:
+            f.unlink()
+            log(f"Fichier log nettoyé: {f}", "INFO")
+
 if __name__ == "__main__":
-    report = generate_comprehensive_report(7)
+    report = generate_comprehensive_report(days=7)
     print(report)
     report_path = save_report(report)
     print(f"\nRapport sauvegardé: {report_path}")
