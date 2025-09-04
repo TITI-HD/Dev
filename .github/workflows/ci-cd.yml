@@ -179,6 +179,10 @@ jobs:
           SLACK_COLOR: "#ff0000"
           SLACK_TITLE: "CI/CD WordPress échoué"
           SLACK_MESSAGE: "Le pipeline CI/CD WordPress a échoué. Repo: ${{ github.repository }}, Run ID: ${{ github.run_id }}"
+      - name: Installer les dépendances Python
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
 #############################
 # 8️⃣ Rapport quotidien
