@@ -1,0 +1,38 @@
+name: WordPress Backup Automatique
+
+on:
+  push:
+    branches: ["main"]
+  schedule:
+    - cron: "0 3 * * *"   # tous les jours à 03h00 UTC
+  workflow_dispatch:       # exécution manuelle si besoin
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Installer dépendances
+        run: pip install requests
+
+      - name: Télécharger snapshot du site
+        run: python wp_backup_restore.py fetch --url=https://oupssecuretest.wordpress.com --source=wordpress_site
+
+      - name: Sauvegarder snapshot avec métadonnées
+        run: python wp_backup_restore.py backup --source=wordpress_site
+
+      - name: Archiver sauvegarde
+        run: zip -r wordpress_backup.zip backups
+
+      - name: Uploader sauvegarde comme artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wordpress-backup
+          path: wordpress_backup.zip

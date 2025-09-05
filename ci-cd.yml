@@ -12,11 +12,6 @@ env:
   SITE_URL: "https://oupssecuretest.wordpress.com"
   BACKUP_DIR: "backups"
   RESTORE_DIR: "restored-backups"
-  ALERT_EMAIL: "danieltiti882@gmail.com"   # email destinataire des alertes
-  SMTP_SERVER: "smtp.gmail.com"
-  SMTP_PORT: "587"
-  SMTP_USER: "danieltiti882@gmail.com"
-  SMTP_PASS: ${{ secrets.SMTP_PASS }}      # 🔑 mot de passe stocké dans GitHub Secrets
 
 jobs:
   setup-and-monitor:
@@ -39,9 +34,11 @@ jobs:
       - name: Installer dépendances Python
         run: |
           python -m venv .venv
+          # Activer venv dans bash
           source .venv/bin/activate
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          # Installer modules manquants si besoin
           pip install schedule requests python-dateutil
 
       # Vérifier imports
