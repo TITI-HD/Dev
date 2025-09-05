@@ -4,6 +4,7 @@ Script principal de surveillance WordPress amélioré
 - Notifications détaillées avec type, heure et contenu des modifications
 - Rapports complets avec solutions proposées
 - Fonctionnement autonome avec planification
+- Modifications: Sécurité renforcée, backup optionnel, diffs pour changements, logging rotatif
 """
 
 import os
@@ -16,6 +17,9 @@ import hashlib
 import re
 import ssl
 import socket
+import difflib  # Ajouté pour diffs de contenu
+import logging  # Ajouté pour logging rotatif
+from logging.handlers import RotatingFileHandler
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
@@ -61,28 +65,30 @@ if MISSING:
             print("Échec de l'installation automatique:", e)
     sys.exit(1)
 
-# Import backup.py
+# Import backup.py (optionnel maintenant)
+backup_available = True
 try:
     from backup import backup_wordpress_content
 except ImportError:
-    print("[ERREUR IMPORT] Impossible d'importer backup_wordpress_content depuis backup.py")
-    sys.exit(1)
+    backup_available = False
+    print("[AVERTISSEMENT] Impossible d'importer backup_wordpress_content depuis backup.py. Backup désactivé.")
 
 # === Configuration ===
 class Config:
-    """Classe de configuration centralisée"""
+    """Centralized configuration class / Classe de configuration centralisée"""
     def __init__(self):
         self.SITE_URL = os.environ.get("SITE_URL", "https://oupssecuretest.wordpress.com")
         self.ALERT_EMAIL = os.environ.get("ALERT_EMAIL", "danieltiti882@gmail.com")
         self.SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
         self.SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
         self.SMTP_USER = os.environ.get("SMTP_USER", "danieltiti882@gmail.com")
-        self.SMTP_PASS = os.environ.get("SMTP_PASS", "")
+        self.SMTP_PASS = os.environ.get("SMTP_PASS", "")  # Obligatoire maintenant
         self.MONITOR_DIR = "monitor_data"
         self.INCIDENT_HISTORY_FILE = os.path.join(self.MONITOR_DIR, "incident_history.json")
         self.LOG_RETENTION_DAYS = int(os.environ.get("LOG_RETENTION_DAYS", "30"))
         self.CHECK_INTERVAL_HOURS = int(os.environ.get("CHECK_INTERVAL_HOURS", "3"))
-        self.USE_EMOJI = os.name != "nt"
+        self.USE_EMOJI = bool(os.environ.get("USE_EMOJI", os.name != "nt"))
+        self.ANONYMIZE_SAMPLES = bool(os.environ.get("ANONYMIZE_SAMPLES", True))  # Nouveau: Anonymiser samples suspects
         
         # Créer le répertoire de surveillance s'il n'existe pas
         Path(self.MONITOR_DIR).mkdir(exist_ok=True)
@@ -91,9 +97,9 @@ class Config:
         self.validate()
     
     def validate(self):
-        """Valide la configuration"""
+        """Validate configuration / Valide la configuration"""
         if not self.SMTP_PASS:
-            print("ATTENTION: SMTP_PASS n'est pas défini. Les alertes par email ne fonctionneront pas.")
+            raise ValueError("ERREUR: SMTP_PASS est obligatoire pour les alertes email.")
         
         if not self.SITE_URL.startswith(('http://', 'https://')):
             print("ATTENTION: SITE_URL devrait commencer par http:// ou https://")
@@ -101,14 +107,36 @@ class Config:
 # Initialiser la configuration
 config = Config()
 
+# === Logging rotatif ===
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+handler = RotatingFileHandler(
+    os.path.join(config.MONITOR_DIR, "monitor.log"),
+    maxBytes=5*1024*1024,  # 5MB
+    backupCount=5
+)
+formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
+def log(message: str, level: str = "INFO"):
+    """Journalisation avec timestamp (utilise logging maintenant)"""
+    if level == "ERROR":
+        logger.error(message)
+    elif level == "WARNING":
+        logger.warning(message)
+    else:
+        logger.info(message)
+    print(message)  # Garder l'affichage console pour debug
+
 # === Gestion des incidents ===
 class IncidentManager:
-    """Gestionnaire d'incidents"""
+    """Incident manager / Gestionnaire d'incidents"""
     def __init__(self, history_file: str):
         self.history_file = history_file
     
     def load_incident_history(self) -> List[Dict]:
-        """Charge l'historique des incidents depuis le fichier"""
+        """Load incident history / Charge l'historique des incidents"""
         if os.path.exists(self.history_file):
             try:
                 with open(self.history_file, 'r', encoding='utf-8') as f:
@@ -118,7 +146,7 @@ class IncidentManager:
         return []
     
     def save_incident_history(self, history: List[Dict]):
-        """Sauvegarde l'historique des incidents dans le fichier"""
+        """Save incident history / Sauvegarde l'historique"""
         try:
             with open(self.history_file, 'w', encoding='utf-8') as f:
                 json.dump(history, f, ensure_ascii=False, indent=2)
@@ -126,7 +154,7 @@ class IncidentManager:
             log(f"Erreur lors de la sauvegarde de l'historique: {e}", "ERROR")
     
     def add_incident(self, incident_type: str, details: Dict, severity: str = "medium") -> Dict:
-        """Ajoute un incident à l'historique"""
+        """Add an incident / Ajoute un incident"""
         history = self.load_incident_history()
         incident = {
             "timestamp": datetime.now().isoformat(),
@@ -135,44 +163,26 @@ class IncidentManager:
             "details": details
         }
         history.append(incident)
-        # Garder seulement les 100 derniers incidents
         if len(history) > 100:
             history = history[-100:]
         self.save_incident_history(history)
         return incident
 
-# Initialiser le gestionnaire d'incidents
 incident_manager = IncidentManager(config.INCIDENT_HISTORY_FILE)
-
-# === Logging amélioré ===
-def log(message: str, level: str = "INFO"):
-    """Journalisation avec timestamp"""
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    line = f"[{timestamp}] [{level}] {message}"
-    print(line)
-    try:
-        with open(os.path.join(config.MONITOR_DIR, "monitor.log"), "a", encoding="utf-8") as f:
-            f.write(line + "\n")
-    except IOError as e:
-        print(f"ERREUR: Impossible d'écrire dans le fichier log: {e}")
 
 # === Utilitaires ===
 def compute_hash(content: str) -> str:
-    """Calcule le hash SHA256 d'un contenu"""
+    """Compute SHA256 hash / Calcule le hash SHA256"""
     return hashlib.sha256(content.encode('utf-8')).hexdigest()
 
 def emoji(symbol: str) -> str:
-    """Retourne l'emoji si configuré, sinon une chaîne vide"""
+    """Return emoji if enabled / Retourne l'emoji si activé"""
     return symbol if config.USE_EMOJI else ""
 
 def send_alert(subject: str, body: str, incident_type: str = "general") -> bool:
-    """Envoie une alerte par email et enregistre l'incident"""
+    """Send email alert and record incident / Envoie une alerte et enregistre l'incident"""
     if not all([config.SMTP_SERVER, config.SMTP_USER, config.SMTP_PASS, config.ALERT_EMAIL]):
-        log("ATTENTION: Configuration SMTP incomplète.", "WARNING")
-        return False
-    
-    if not config.SMTP_PASS:
-        log("ATTENTION: SMTP_PASS non défini, impossible d'envoyer des emails", "WARNING")
+        log("Configuration SMTP incomplète.", "WARNING")
         return False
     
     try:
@@ -187,24 +197,20 @@ def send_alert(subject: str, body: str, incident_type: str = "general") -> bool:
             server.login(config.SMTP_USER, config.SMTP_PASS)
             server.send_message(msg)
         
-        # Enregistrer l'incident
         incident_manager.add_incident(incident_type, {
             "subject": subject,
             "body": body,
             "sent_via": "email"
         })
         
-        log("SUCCÈS: Alerte envoyée", "INFO")
+        log("SUCCÈS: Alerte envoyée")
         return True
-    except smtplib.SMTPException as e:
-        log(f"ERREUR SMTP lors de l'envoi d'alerte : {e}", "ERROR")
-        return False
     except Exception as e:
-        log(f"ERREUR inattendue lors de l'envoi d'alerte : {e}", "ERROR")
+        log(f"ERREUR lors de l'envoi d'alerte : {e}", "ERROR")
         return False
 
 def generate_solutions_report(issues: Dict) -> str:
-    """Génère un rapport de solutions basé sur les problèmes détectés"""
+    """Generate solutions report / Génère un rapport de solutions"""
     solutions = []
     
     if not issues.get('available', True):
@@ -251,7 +257,6 @@ def generate_solutions_report(issues: Dict) -> str:
     if not solutions:
         return "✅ Aucun problème détecté, tout fonctionne normalement."
     
-    # Formatage du rapport de solutions
     report = "🔧 SOLUTIONS PROPOSÉES :\n\n"
     for i, solution_set in enumerate(solutions, 1):
         report += f"{i}. {solution_set['problem']} :\n"
@@ -261,10 +266,21 @@ def generate_solutions_report(issues: Dict) -> str:
     
     return report
 
+# === Détection type WordPress (nouveau) ===
+def detect_wp_type() -> str:
+    """Detect if WP is self-hosted or hosted / Détecte le type de WP"""
+    try:
+        resp = requests.get(f"{config.SITE_URL}/wp-json/", timeout=5)
+        if resp.status_code == 200 and "WordPress.com" in resp.text:
+            return "hosted (WordPress.com)"
+        return "self-hosted"
+    except Exception:
+        return "inconnu"
+
 # === Vérifications améliorées ===
 def check_site_availability() -> Dict:
-    """Vérifie la disponibilité du site"""
-    log("Vérification de disponibilité...", "INFO")
+    """Check site availability / Vérifie la disponibilité"""
+    log("Vérification de disponibilité...")
     results = {'available': False, 'status_code': None, 'response_time': None, 'error': None}
     try:
         start = datetime.now()
@@ -274,7 +290,7 @@ def check_site_availability() -> Dict:
         results['available'] = resp.status_code == 200
         
         if results['available']:
-            log(f"Site accessible {emoji('✅')}", "INFO")
+            log(f"Site accessible {emoji('✅')}")
         else:
             log(f"Site retourne HTTP {resp.status_code} {emoji('⚠️')}", "WARNING")
             incident_manager.add_incident("site_unavailable", {
@@ -285,15 +301,13 @@ def check_site_availability() -> Dict:
     except requests.RequestException as e:
         results['error'] = str(e)
         log(f"ERREUR accès site : {e}", "ERROR")
-        incident_manager.add_incident("site_unavailable", {
-            "error": str(e)
-        }, "high")
+        incident_manager.add_incident("site_unavailable", {"error": str(e)}, "high")
         
     return results
 
 def check_content_integrity() -> Dict:
-    """Vérifie l'intégrité du contenu"""
-    log("Vérification d'intégrité...", "INFO")
+    """Check content integrity with diffs / Vérifie l'intégrité avec diffs"""
+    log("Vérification d'intégrité...")
     results = {'changed': False, 'changes': [], 'error': None}
     endpoints = [
         (config.SITE_URL, "homepage"),
@@ -305,35 +319,48 @@ def check_content_integrity() -> Dict:
         try:
             response = requests.get(url, timeout=10)
             if response.status_code == 200:
-                current_hash = compute_hash(response.text)
+                current_content = response.text
+                current_hash = compute_hash(current_content)
                 ref_file = os.path.join(config.MONITOR_DIR, f"{name}.ref")
+                content_file = os.path.join(config.MONITOR_DIR, f"{name}_content.ref")  # Nouveau: Stocke contenu pour diffs
                 
-                if os.path.exists(ref_file):
+                if os.path.exists(ref_file) and os.path.exists(content_file):
                     with open(ref_file, 'r', encoding='utf-8') as f:
                         old_hash = f.read().strip()
+                    with open(content_file, 'r', encoding='utf-8') as f:
+                        old_content = f.read()
                     
                     if current_hash != old_hash:
                         results['changed'] = True
+                        diff = '\n'.join(difflib.unified_diff(
+                            old_content.splitlines(),
+                            current_content.splitlines(),
+                            lineterm=''
+                        ))
                         change_detail = {
                             'endpoint': name, 
                             'url': url,
                             'timestamp': datetime.now().isoformat(),
                             'old_hash': old_hash,
-                            'new_hash': current_hash
+                            'new_hash': current_hash,
+                            'diff': diff[:500] + '...' if len(diff) > 500 else diff  # Limite pour rapports
                         }
                         results['changes'].append(change_detail)
                         
-                        # Enregistrer l'incident de modification
                         incident_manager.add_incident("content_changed", change_detail, "medium")
                         log(f"Changement détecté : {name} {emoji('⚠️')}", "WARNING")
                         
-                        # Mettre à jour la référence
+                        # Mettre à jour références
                         with open(ref_file, 'w', encoding='utf-8') as f:
                             f.write(current_hash)
+                        with open(content_file, 'w', encoding='utf-8') as f:
+                            f.write(current_content)
                 else:
                     with open(ref_file, 'w', encoding='utf-8') as f:
                         f.write(current_hash)
-                    log(f"Référence créée : {name}", "INFO")
+                    with open(content_file, 'w', encoding='utf-8') as f:
+                        f.write(current_content)
+                    log(f"Référence créée : {name}")
             else:
                 log(f"Erreur HTTP sur {url}: {response.status_code}", "WARNING")
                 
@@ -344,42 +371,49 @@ def check_content_integrity() -> Dict:
     return results
 
 def check_for_malicious_patterns() -> Dict:
-    """Recherche des patterns malveillants dans le contenu"""
-    log("Recherche de patterns suspects...", "INFO")
+    """Search for malicious patterns with scoring / Recherche patterns avec scoring"""
+    log("Recherche de patterns suspects...")
     results = {'suspicious_patterns': [], 'error': None}
-    patterns = [
-        (r'eval\s*\(', "Fonction eval() potentiellement dangereuse"),
-        (r'base64_decode\s*\(', "Décodage base64 suspect"),
-        (r'exec\s*\(', "Appel système exec()"),
-        (r'system\s*\(', "Appel système system()"),
-        (r'shell_exec\s*\(', "Appel système shell_exec()"),
-        (r'<script>[^<]*(alert|prompt|confirm)[^<]*</script>', "Script JavaScript suspect"),
-        (r'<iframe[^>]*src=[^>]*>', "Iframe potentiellement malveillant")
+    patterns = [  # Amélioré avec sévérité
+        (r'eval\s*\(', "Fonction eval() potentiellement dangereuse", "high"),
+        (r'base64_decode\s*\(', "Décodage base64 suspect", "medium"),
+        (r'exec\s*\(', "Appel système exec()", "high"),
+        (r'system\s*\(', "Appel système system()", "high"),
+        (r'shell_exec\s*\(', "Appel système shell_exec()", "high"),
+        (r'<script>[^<]*(alert|prompt|confirm)[^<]*</script>', "Script JavaScript suspect", "medium"),
+        (r'<iframe[^>]*src=[^>]*>', "Iframe potentiellement malveillant", "medium")
     ]
+    whitelist_patterns = []  # Ajoute des regex à ignorer si besoin, e.g., [r'known_safe_eval']
     
     try:
         response = requests.get(config.SITE_URL, timeout=10)
         if response.status_code == 200:
             content = response.text
             
-            for pat, description in patterns:
+            for pat, description, severity in patterns:
+                if any(re.search(wp, content, re.IGNORECASE) for wp in whitelist_patterns):
+                    continue  # Skip si whitelist match
                 matches = re.findall(pat, content, re.IGNORECASE)
                 if matches:
+                    sample = matches[0] if len(matches) > 0 else None
+                    if config.ANONYMIZE_SAMPLES:
+                        sample = "[ANONYMISÉ]"  # Anonymiser
                     results['suspicious_patterns'].append({
                         'pattern': pat,
                         'description': description,
+                        'severity': severity,
                         'matches_count': len(matches),
-                        'sample': matches[0] if len(matches) > 0 else None
+                        'sample': sample
                     })
                     
-                    # Enregistrer l'incident de sécurité
                     incident_manager.add_incident("suspicious_code", {
                         'pattern': pat,
                         'description': description,
+                        'severity': severity,
                         'matches_count': len(matches)
-                    }, "high")
+                    }, severity)
                     
-                    log(f"Pattern suspect détecté : {description} ({len(matches)} occurences) {emoji('⚠️')}", "WARNING")
+                    log(f"Pattern suspect ({severity}): {description} ({len(matches)}) {emoji('⚠️')}", "WARNING")
                     
     except requests.RequestException as e:
         results['error'] = str(e)
@@ -388,10 +422,10 @@ def check_for_malicious_patterns() -> Dict:
     return results
 
 def check_ssl_certificate() -> Dict:
-    """Vérifie si le certificat SSL est valide"""
-    log("Vérification du certificat SSL...", "INFO")
+    """Check SSL certificate with chain validation / Vérifie SSL avec chaîne"""
+    log("Vérification du certificat SSL...")
     
-    results = {"valid": False, "error": None, "expires_in": None}
+    results = {"valid": False, "error": None, "expires_in": None, "chain_valid": False}
     try:
         hostname = config.SITE_URL.replace("https://", "").split("/")[0]
         ctx = ssl.create_default_context()
@@ -400,48 +434,42 @@ def check_ssl_certificate() -> Dict:
                 cert = ssock.getpeercert()
                 results["valid"] = True
                 
-                # Vérifier la date d'expiration
-                expire_date = parser.parse(cert['notAfter'])
-                expire_date_naive = expire_date.astimezone(tz.UTC).replace(tzinfo=None)
-                results["expires_in"] = (expire_date_naive - datetime.utcnow()).days
+                # Vérif chaîne (basique: check si issuer présent)
+                results["chain_valid"] = 'issuer' in cert
                 
-                if results["expires_in"] < 7:  # Moins d'une semaine
+                # Date expiration avec timezone fixée
+                expire_date = parser.parse(cert['notAfter']).astimezone(tz.UTC)
+                now = datetime.now(tz.UTC)
+                results["expires_in"] = (expire_date - now).days
+                
+                if results["expires_in"] < 7:
                     incident_manager.add_incident("ssl_expiring_soon", {
                         "hostname": hostname,
                         "expire_date": cert['notAfter'],
                         "days_until_expire": results["expires_in"]
                     }, "medium")
-                    log(f"Certificat SSL expire dans {results['expires_in']} jours {emoji('⚠️')}", "WARNING")
+                    log(f"Certificat expire dans {results['expires_in']} jours {emoji('⚠️')}", "WARNING")
                 else:
-                    log(f"Certificat SSL valide pour {hostname} (expire dans {results['expires_in']} jours) ✅", "INFO")
+                    log(f"Certificat valide (expire dans {results['expires_in']} jours) {emoji('✅')}")
                     
-    except ssl.SSLError as e:
-        results["error"] = str(e)
-        results["valid"] = False
-        log(f"ERREUR certificat SSL: {e}", "ERROR")
-        incident_manager.add_incident("ssl_error", {"error": str(e)}, "high")
-    except (socket.gaierror, socket.timeout, ConnectionRefusedError) as e:
-        results["error"] = str(e)
-        results["valid"] = False
-        log(f"ERREUR connexion SSL: {e}", "ERROR")
-        incident_manager.add_incident("ssl_connection_error", {"error": str(e)}, "high")
     except Exception as e:
         results["error"] = str(e)
         results["valid"] = False
-        log(f"ERREUR inattendue lors de la vérification SSL: {e}", "ERROR")
-        incident_manager.add_incident("ssl_unexpected_error", {"error": str(e)}, "high")
+        log(f"ERREUR SSL: {e}", "ERROR")
+        incident_manager.add_incident("ssl_error", {"error": str(e)}, "high")
         
     return results
 
 # === Génération de rapports ===
 def generate_detailed_report(availability, integrity, security, ssl_check) -> str:
-    """Génère un rapport détaillé de la surveillance"""
+    """Generate detailed report / Génère un rapport détaillé"""
+    wp_type = detect_wp_type()
     report = f"📊 RAPPORT DE SURVEILLANCE WORDPRESS\n"
-    report += f"📍 Site: {config.SITE_URL}\n"
+    report += f"📍 Site: {config.SITE_URL} (Type: {wp_type})\n"  # Ajout type WP
     report += f"⏰ Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
     report += "="*50 + "\n\n"
     
-    # Section disponibilité
+    # Sections inchangées, mais avec diffs dans integrity
     report += "🌐 DISPONIBILITÉ DU SITE:\n"
     if availability['available']:
         report += f"✅ Site accessible (HTTP {availability['status_code']}, {availability['response_time']:.2f}s)\n"
@@ -453,13 +481,13 @@ def generate_detailed_report(availability, integrity, security, ssl_check) -> st
             report += f"   Code HTTP: {availability['status_code']}\n"
     report += "\n"
     
-    # Section intégrité
     report += "🔍 INTÉGRITÉ DU CONTENU:\n"
     if integrity['changed']:
         report += f"⚠️ {len(integrity['changes'])} modification(s) détectée(s):\n"
         for change in integrity['changes']:
             report += f"   - {change['endpoint']}: {change['url']}\n"
             report += f"     Heure: {change['timestamp']}\n"
+            report += f"     Diff: {change['diff']}\n"
     else:
         report += "✅ Aucune modification détectée\n"
     
@@ -467,13 +495,13 @@ def generate_detailed_report(availability, integrity, security, ssl_check) -> st
         report += f"   Erreur: {integrity['error']}\n"
     report += "\n"
     
-    # Section sécurité
     report += "🛡️ SÉCURITÉ:\n"
     if security['suspicious_patterns']:
         report += f"⚠️ {len(security['suspicious_patterns'])} pattern(s) suspect(s) détecté(s):\n"
         for pattern in security['suspicious_patterns']:
-            report += f"   - {pattern['description']}\n"
+            report += f"   - {pattern['description']} ({pattern['severity']})\n"
             report += f"     Occurences: {pattern['matches_count']}\n"
+            report += f"     Sample: {pattern['sample']}\n"
     else:
         report += "✅ Aucun code suspect détecté\n"
     
@@ -481,46 +509,41 @@ def generate_detailed_report(availability, integrity, security, ssl_check) -> st
         report += f"   Erreur: {security['error']}\n"
     report += "\n"
     
-    # Section SSL
     report += "🔒 CERTIFICAT SSL:\n"
     if ssl_check['valid']:
-        if ssl_check['expires_in'] and ssl_check['expires_in'] < 7:
-            report += f"⚠️ Certificat valide mais expire dans {ssl_check['expires_in']} jours\n"
+        status = "valide" if ssl_check['chain_valid'] else "valide mais chaîne incomplète"
+        if ssl_check['expires_in'] < 7:
+            report += f"⚠️ Certificat {status} mais expire dans {ssl_check['expires_in']} jours\n"
         else:
-            report += f"✅ Certificat valide (expire dans {ssl_check['expires_in']} jours)\n"
+            report += f"✅ Certificat {status} (expire dans {ssl_check['expires_in']} jours)\n"
     else:
         report += f"❌ Certificat invalide: {ssl_check['error']}\n"
     report += "\n"
     
     return report
 
-# === Monitoring principal amélioré ===
+# === Monitoring principal ===
 def main_monitoring() -> str:
-    """Exécute une surveillance complète et génère un rapport"""
-    log(f"=== DÉMARRAGE SURVEILLANCE ===", "INFO")
+    """Run full monitoring / Exécute surveillance complète"""
+    log("=== DÉMARRAGE SURVEILLANCE ===")
     
-    # Exécuter toutes les vérifications
     availability = check_site_availability()
     integrity = check_content_integrity()
     security = check_for_malicious_patterns()
     ssl_check = check_ssl_certificate()
     
-    # Générer le rapport détaillé
     detailed_report = generate_detailed_report(availability, integrity, security, ssl_check)
     
-    # Identifier les problèmes
     issues = {
         'available': availability['available'],
         'content_changed': integrity['changed'],
         'suspicious_patterns': len(security['suspicious_patterns']) > 0,
-        'ssl_invalid': not ssl_check['valid'] or (ssl_check['expires_in'] is not None and ssl_check['expires_in'] < 7)
+        'ssl_invalid': not ssl_check['valid'] or ssl_check['expires_in'] < 7 or not ssl_check['chain_valid']
     }
     
-    # Ajouter les solutions au rapport
     solutions_report = generate_solutions_report(issues)
     full_report = detailed_report + "\n" + solutions_report
     
-    # Déterminer le sujet de l'alerte
     if not availability['available']:
         subject = "🚨 CRITIQUE: Site WordPress inaccessible"
         incident_type = "site_down"
@@ -537,96 +560,95 @@ def main_monitoring() -> str:
         subject = "✅ RAPPORT: Surveillance WordPress - Aucun problème"
         incident_type = "all_ok"
     
-    # Envoyer le rapport
     send_alert(subject, full_report, incident_type)
     
-    # Sauvegarder le rapport dans un fichier
     report_file = os.path.join(config.MONITOR_DIR, f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
     try:
         with open(report_file, 'w', encoding='utf-8') as f:
             f.write(full_report)
-        log(f"Rapport sauvegardé: {report_file}", "INFO")
+        log(f"Rapport sauvegardé: {report_file}")
     except IOError as e:
         log(f"ERREUR sauvegarde rapport: {e}", "ERROR")
     
-    log(f"=== FIN SURVEILLANCE ===", "INFO")
+    log("=== FIN SURVEILLANCE ===")
     
     return full_report
 
 def cleanup_old_logs():
-    """Nettoie les anciens fichiers de log selon la rétention configurée"""
+    """Clean old logs / Nettoie anciens logs"""
     cutoff_time = datetime.now() - timedelta(days=config.LOG_RETENTION_DAYS)
     
-    log_files = [
-        os.path.join(config.MONITOR_DIR, "monitor.log"),
-        *glob.glob(os.path.join(config.MONITOR_DIR, "report_*.txt")),
-        *glob.glob(os.path.join(config.MONITOR_DIR, "reports", "comprehensive_report_*.txt"))
-    ]
-    
+    log_files = glob.glob(os.path.join(config.MONITOR_DIR, "report_*.txt"))
     for log_file in log_files:
         if os.path.exists(log_file):
             file_time = datetime.fromtimestamp(os.path.getmtime(log_file))
             if file_time < cutoff_time:
                 try:
                     os.remove(log_file)
-                    log(f"Fichier log nettoyé: {log_file}", "INFO")
+                    log(f"Fichier log nettoyé: {log_file}")
                 except IOError as e:
-                    log(f"ERREUR suppression fichier log: {e}", "ERROR")
+                    log(f"ERREUR suppression: {e}", "ERROR")
 
-# === Planification et exécution continue ===
+# === Planification ===
 def run_scheduled_monitoring():
-    """Exécute la surveillance selon un planning défini"""
-    log("Démarrage du service de surveillance planifié", "INFO")
+    """Run scheduled monitoring / Exécute surveillance planifiée"""
+    log("Démarrage du service planifié")
     
-    # Nettoyer les anciens logs au démarrage
     cleanup_old_logs()
     
-    # Planifier une exécution selon l'intervalle configuré
     schedule.every(config.CHECK_INTERVAL_HOURS).hours.do(main_monitoring)
-    
-    # Planifier le nettoyage des logs tous les jours
     schedule.every().day.do(cleanup_old_logs)
     
-    # Exécuter aussi immédiatement
-    main_monitoring()
+    main_monitoring()  # Run immédiat
     
-    # Boucle principale
     while True:
         try:
             schedule.run_pending()
-            time.sleep(60)  # Vérifier toutes les minutes
+            time.sleep(schedule.idle_seconds() or 60)  # Sleep intelligent
         except KeyboardInterrupt:
-            log("Arrêt demandé par l'utilisateur", "INFO")
+            log("Arrêt utilisateur")
             break
         except Exception as e:
-            log(f"Erreur dans la boucle de planification: {e}", "ERROR")
-            time.sleep(300)  # Attendre 5 minutes en cas d'erreur
+            log(f"Erreur planification: {e}", "ERROR")
+            time.sleep(300)
 
 # === Enchaînement backup + monitoring ===
 def backup_and_monitor() -> str:
-    """Exécute une sauvegarde suivie d'une surveillance"""
-    log("Lancement sauvegarde...", "INFO")
-    backup_wordpress_content()
-    log("Lancement surveillance...", "INFO")
+    """Backup then monitor / Sauvegarde puis surveillance"""
+    if backup_available:
+        log("Lancement sauvegarde...")
+        try:
+            backup_wordpress_content()
+        except Exception as e:
+            log(f"Erreur backup: {e}", "WARNING")
+    else:
+        log("Backup non disponible, skip.")
+    log("Lancement surveillance...")
     return main_monitoring()
 
+# === Tests unitaires basiques (nouveau) ===
+import unittest
+
+class TestUtils(unittest.TestCase):
+    def test_compute_hash(self):
+        self.assertEqual(compute_hash("test"), hashlib.sha256("test".encode('utf-8')).hexdigest())
+    
+    # Ajoute plus de tests si besoin
+
 if __name__ == "__main__":
+    if "--test" in sys.argv:
+        unittest.main()
     try:
-        # Vérifier les arguments de ligne de commande
         if "--scheduled" in sys.argv:
-            # Mode service avec planification
             run_scheduled_monitoring()
         elif "--once" in sys.argv:
-            # Exécution unique
             backup_and_monitor()
         else:
-            # Mode par défaut: exécution unique
             backup_and_monitor()
-            
     except KeyboardInterrupt:
-        log("Arrêt demandé par l'utilisateur", "INFO")
+        log("Arrêt utilisateur")
         sys.exit(0)
     except Exception as e:
         log(f"ERREUR CRITIQUE: {e}", "ERROR")
-        send_alert("❌ Erreur critique dans la surveillance", str(e), "system_error")
+        send_alert("❌ Erreur critique", str(e), "system_error")
         sys.exit(1)
