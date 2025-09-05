@@ -6,10 +6,9 @@ Consolide les logs, incidents et rapports en un document unique
 
 import os
 import json
-import glob
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Dict, List
-from pathlib import Path  # <- Ajouté ici
 
 # Dossiers de surveillance et rapports
 MONITOR_DIR = Path("monitor_data")
@@ -115,15 +114,6 @@ def save_report(report: str, filename: str = None) -> str:
     with report_path.open('w', encoding='utf-8') as f:
         f.write(report)
     return str(report_path)
-
-# Nettoyage des anciens logs
-def cleanup_old_logs(retention_days: int = 30):
-    cutoff = datetime.now() - timedelta(days=retention_days)
-    log_files = list(MONITOR_DIR.glob("monitor.log")) + list(MONITOR_DIR.glob("report_*.txt")) + list(REPORTS_DIR.glob("comprehensive_report_*.txt"))
-    for f in log_files:
-        if f.exists() and datetime.fromtimestamp(f.stat().st_mtime) < cutoff:
-            f.unlink()
-            log(f"Fichier log nettoyé: {f}", "INFO")
 
 if __name__ == "__main__":
     report = generate_comprehensive_report(days=7)

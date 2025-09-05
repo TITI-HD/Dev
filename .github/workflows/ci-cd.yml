@@ -82,4 +82,6 @@ jobs:
           python -m venv .venv
           source .venv/bin/activate
           mkdir -p $RESTORE_DIR
-          python wp-backup-restore.py restore --backup-dir "$BACKUP_DIR" --restore-dir "$RESTORE_DIR"
+          python wp_backup_restore.py fetch --url="$SITE_URL" --source="$BACKUP_DIR"
+          python wp_backup_restore.py restore --dir="$RESTORE_DIR"
+

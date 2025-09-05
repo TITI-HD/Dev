@@ -526,24 +526,25 @@ def generate_detailed_report(availability, integrity, security, ssl_check) -> st
 def main_monitoring() -> str:
     """Run full monitoring / Exécute surveillance complète"""
     log("=== DÉMARRAGE SURVEILLANCE ===")
-    
+
     availability = check_site_availability()
     integrity = check_content_integrity()
     security = check_for_malicious_patterns()
     ssl_check = check_ssl_certificate()
-    
+
     detailed_report = generate_detailed_report(availability, integrity, security, ssl_check)
-    
+
     issues = {
         'available': availability['available'],
         'content_changed': integrity['changed'],
         'suspicious_patterns': len(security['suspicious_patterns']) > 0,
         'ssl_invalid': not ssl_check['valid'] or ssl_check['expires_in'] < 7 or not ssl_check['chain_valid']
     }
-    
+
     solutions_report = generate_solutions_report(issues)
     full_report = detailed_report + "\n" + solutions_report
-    
+
+    # Déterminer le type d'alerte
     if not availability['available']:
         subject = "🚨 CRITIQUE: Site WordPress inaccessible"
         incident_type = "site_down"
@@ -559,20 +560,42 @@ def main_monitoring() -> str:
     else:
         subject = "✅ RAPPORT: Surveillance WordPress - Aucun problème"
         incident_type = "all_ok"
-    
-    send_alert(subject, full_report, incident_type)
-    
-    report_file = os.path.join(config.MONITOR_DIR, f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
+
+    # Système anti-répétition d'alerte
+    cache_file = os.path.join(config.MONITOR_DIR, "incident_cache.json")
+    cache_data = {}
+    if os.path.exists(cache_file):
+        with open(cache_file, "r", encoding="utf-8") as f:
+            try:
+                cache_data = json.load(f)
+            except json.JSONDecodeError:
+                cache_data = {}
+
+    last_sent = cache_data.get(incident_type)
+    now_ts = int(time.time())
+
+    if not last_sent or (now_ts - last_sent > 3600):  # Évite d'envoyer la même alerte toutes les minutes
+        send_alert(subject, full_report, incident_type)
+        cache_data[incident_type] = now_ts
+        with open(cache_file, "w", encoding="utf-8") as f:
+            json.dump(cache_data, f)
+
+    # Sauvegarde du rapport
+    date_folder = datetime.now().strftime('%Y-%m-%d')
+    report_dir = os.path.join(config.MONITOR_DIR, "daily", date_folder)
+    Path(report_dir).mkdir(parents=True, exist_ok=True)
+    report_file = os.path.join(report_dir, f"report_{datetime.now().strftime('%H%M%S')}.txt")
+
     try:
         with open(report_file, 'w', encoding='utf-8') as f:
             f.write(full_report)
         log(f"Rapport sauvegardé: {report_file}")
     except IOError as e:
         log(f"ERREUR sauvegarde rapport: {e}", "ERROR")
-    
+
     log("=== FIN SURVEILLANCE ===")
-    
     return full_report
+
 
 def cleanup_old_logs():
     """Clean old logs / Nettoie anciens logs"""
@@ -634,6 +657,49 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(compute_hash("test"), hashlib.sha256("test".encode('utf-8')).hexdigest())
     
     # Ajoute plus de tests si besoin
+
+#!/usr/bin/env python3
+"""
+Monitoring basique WordPress :
+- Vérifie accessibilité site
+- Enregistre dans monitor.log
+- Option --once pour exécution unique
+"""
+
+import requests
+import argparse
+from datetime import datetime
+from pathlib import Path
+
+MONITOR_DIR = Path("monitor_data")
+MONITOR_DIR.mkdir(exist_ok=True, parents=True)
+LOG_FILE = MONITOR_DIR / "monitor.log"
+
+def log(message: str):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    line = f"[{timestamp}] {message}"
+    print(line)
+    with LOG_FILE.open("a", encoding="utf-8") as f:
+        f.write(line + "\n")
+
+def check_site(url: str):
+    try:
+        r = requests.get(url, timeout=10)
+        if r.status_code == 200:
+            log(f"Site accessible ✅ : {url}")
+        else:
+            log(f"Site inaccessible ❌ ({r.status_code}) : {url}")
+    except Exception as e:
+        log(f"Site inaccessible ❌ : {url} ({e})")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--once", action="store_true", help="Exécution unique")
+    parser.add_argument("--url", type=str, default="https://oupssecuretest.wordpress.com")
+    args = parser.parse_args()
+
+    if args.once:
+        check_site(args.url)
 
 if __name__ == "__main__":
     if "--test" in sys.argv:
