@@ -9,9 +9,12 @@ import json
 import glob
 from datetime import datetime, timedelta
 from typing import Dict, List
+from pathlib import Path  # <- Ajouté ici
 
+# Dossiers de surveillance et rapports
 MONITOR_DIR = Path("monitor_data")
 REPORTS_DIR = MONITOR_DIR / "reports"
+MONITOR_DIR.mkdir(exist_ok=True, parents=True)
 REPORTS_DIR.mkdir(exist_ok=True, parents=True)
 
 # === Logging ===
@@ -23,6 +26,7 @@ def log(message: str, level: str = "INFO"):
     with log_file.open("a", encoding="utf-8") as f:
         f.write(line + "\n")
 
+# Chargement de l'historique des incidents
 def load_incident_history() -> List[Dict]:
     incident_file = MONITOR_DIR / "incident_history.json"
     if incident_file.exists():
@@ -34,6 +38,7 @@ def load_incident_history() -> List[Dict]:
             return []
     return []
 
+# Chargement des logs récents
 def load_recent_logs(days: int = 7) -> List[str]:
     log_file = MONITOR_DIR / "monitor.log"
     logs = []
@@ -49,6 +54,7 @@ def load_recent_logs(days: int = 7) -> List[str]:
                     logs.append(line.strip())
     return logs
 
+# Génération d’un rapport complet
 def generate_comprehensive_report(days: int = 7) -> str:
     incidents = load_incident_history()
     logs = load_recent_logs(days)
@@ -101,6 +107,7 @@ def generate_comprehensive_report(days: int = 7) -> str:
 
     return report
 
+# Sauvegarde du rapport
 def save_report(report: str, filename: str = None) -> str:
     if filename is None:
         filename = f"comprehensive_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
@@ -109,6 +116,7 @@ def save_report(report: str, filename: str = None) -> str:
         f.write(report)
     return str(report_path)
 
+# Nettoyage des anciens logs
 def cleanup_old_logs(retention_days: int = 30):
     cutoff = datetime.now() - timedelta(days=retention_days)
     log_files = list(MONITOR_DIR.glob("monitor.log")) + list(MONITOR_DIR.glob("report_*.txt")) + list(REPORTS_DIR.glob("comprehensive_report_*.txt"))
