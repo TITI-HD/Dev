@@ -18,10 +18,13 @@ env:
   SMTP_PORT: 587
   SMTP_USER: "danieltiti882@gmail.com"
   SMTP_PASS: ${{ secrets.SMTP_PASS }}
+  VENV_PATH: ".venv"
 
 jobs:
-  wordpress-backup:
+  setup:
     runs-on: ubuntu-latest
+    outputs:
+      venv-path: ${{ steps.venv.outputs.venv-path }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -31,11 +34,13 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Create venv and install dependencies
+        id: venv
         run: |
-          python -m venv .venv
-          source .venv/bin/activate
-          pip install -r requirements.txt
+          python -m venv $VENV_PATH
+          $VENV_PATH/bin/pip install --upgrade pip
+          $VENV_PATH/bin/pip install -r requirements.txt
+          echo "venv-path=$VENV_PATH" >> $GITHUB_OUTPUT
 
       - name: Create directories
         run: |
@@ -48,22 +53,23 @@ jobs:
           pwd
           ls -R
 
+  wordpress-backup:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
       - name: Run backup script
         run: |
-          source .venv/bin/activate
-          # Adapte le chemin ici si nécessaire
-          if python wp-backup-restore.py fetch --site-url "$SITE_URL" --backup-dir "$BACKUP_DIR"; then
-            echo "<li style='color:green;'>Sauvegarde OK</li>" >> workflow-logs/logs.html
-          else
-            echo "<li style='color:red;'>ERREUR Sauvegarde</li>" >> workflow-logs/logs.html
-            exit 1
-          fi
+          ${{ env.VENV_PATH }}/bin/python wp-backup-restore.py fetch --site-url "$SITE_URL" --backup-dir "$BACKUP_DIR" \
+            && echo "<li style='color:green;'>Sauvegarde OK</li>" >> workflow-logs/logs.html \
+            || (echo "<li style='color:red;'>ERREUR Sauvegarde</li>" >> workflow-logs/logs.html && exit 1)
 
       - name: Send notification email
         if: failure()
         run: |
-          source .venv/bin/activate
-          python send_alert_email.py \
+          ${{ env.VENV_PATH }}/bin/python send_alert_email.py \
             --to "$ALERT_EMAIL" \
             --subject "Échec sauvegarde WordPress" \
             --smtp-server "$SMTP_SERVER" \
@@ -72,22 +78,15 @@ jobs:
             --smtp-pass "$SMTP_PASS"
 
   wordpress-restore:
+    needs: setup
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
       - name: Restore backup
         run: |
-          python -m venv .venv
-          source .venv/bin/activate
           mkdir -p $RESTORE_DIR
-          # Adapte le nom du script ici aussi
-          python wp-backup-restore.py fetch --url="$SITE_URL" --source="$BACKUP_DIR"
-          python wp-backup-restore.py restore --dir="$RESTORE_DIR"
+          ${{ env.VENV_PATH }}/bin/python wp-backup-restore.py fetch --site-url "$SITE_URL" --backup-dir "$BACKUP_DIR"
+          ${{ env.VENV_PATH }}/bin/python wp-backup-restore.py restore --dir "$RESTORE_DIR"
