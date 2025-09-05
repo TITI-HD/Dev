@@ -25,6 +25,45 @@ def log(message: str, level: str = "INFO"):
     with log_file.open("a", encoding="utf-8") as f:
         f.write(line + "\n")
 
+def clean_log_file():
+    """Nettoie le fichier de log corrompu"""
+    log_file = MONITOR_DIR / "monitor.log"
+    if not log_file.exists():
+        return
+        
+    backup_file = MONITOR_DIR / "monitor.log.backup"
+    
+    # Faire une copie de sauvegarde
+    if backup_file.exists():
+        backup_file.unlink()
+    log_file.rename(backup_file)
+    
+    # Lire et réécrire proprement
+    try:
+        with backup_file.open('rb') as f:
+            content = f.read()
+        
+        # Essayer de décoder avec différents encodages
+        for encoding in ['latin-1', 'cp1252', 'iso-8859-1', 'utf-8']:
+            try:
+                decoded_content = content.decode(encoding, errors='replace')
+                # Réécrire en UTF-8
+                with log_file.open('w', encoding='utf-8') as f:
+                    f.write(decoded_content)
+                log(f"Fichier log converti de {encoding} vers UTF-8")
+                return True
+            except UnicodeDecodeError:
+                continue
+                
+        # Si aucun encodage ne fonctionne, écrire un message d'erreur
+        with log_file.open('w', encoding='utf-8') as f:
+            f.write("[LOG FILE CORRUPTED - COULD NOT RECOVER]")
+        return False
+        
+    except Exception as e:
+        log(f"Erreur lors du nettoyage du log: {e}", "ERROR")
+        return False
+
 # Chargement de l'historique des incidents
 def load_incident_history() -> List[Dict]:
     incident_file = MONITOR_DIR / "incident_history.json"
@@ -193,10 +232,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Générateur de rapports de surveillance WordPress")
     parser.add_argument("--days", type=int, default=7, help="Nombre de jours à analyser (défaut: 7)")
     parser.add_argument("--output", help="Nom du fichier de sortie")
+    parser.add_argument("--clean-logs", action="store_true", help="Nettoyer les fichiers de log corrompus")
     
     args = parser.parse_args()
     
     try:
+        if args.clean_logs:
+            log("Nettoyage des fichiers de log...")
+            clean_log_file()
+        
         log(f"Démarrage génération rapport pour {args.days} jours")
         report = generate_comprehensive_report(days=args.days)
         print(report)
