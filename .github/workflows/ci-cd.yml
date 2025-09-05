@@ -1,152 +1,85 @@
-name: WordPress CI/CD - Full Monitoring, Backup & Restore with HTML Email Logs
+name: WordPress CI/CD - Backup & Restore
 
 on:
   push:
     branches: ["main"]
   pull_request:
   schedule:
-    - cron: '0 */3 * * *'   # Monitoring toutes les 3h
+    - cron: '0 */3 * * *'   # Surveillance toutes les 3h
     - cron: '0 8 * * *'     # Rapport quotidien à 08:00
-  workflow_dispatch:        # Permet restauration manuelle
+  workflow_dispatch:        # Permet lancement manuel
 
 env:
   SITE_URL: "https://oupssecuretest.wordpress.com"
-  BACKUP_DIR: "backups"
-  RESTORE_DIR: "restored-backups"
+  BACKUP_DIR: "sauvegardes"
+  RESTORE_DIR: "restaurations"
   ALERT_EMAIL: "danieltiti882@gmail.com"
   SMTP_SERVER: "smtp.gmail.com"
-  SMTP_PORT: "587"
+  SMTP_PORT: 587
   SMTP_USER: "danieltiti882@gmail.com"
-  SMTP_PASS: ${{ secrets.SMTP_PASS }}
+  SMTP_PASS: ${{ secrets.SMTP_PASS }}  # Met ton mot de passe ou token dans GitHub Secrets
 
 jobs:
-  ci-cd:
+  wordpress-backup:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
-      - uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-
-      - name: Créer venv et installer dépendances
+      - name: Install dependencies
         run: |
           python -m venv .venv
           source .venv/bin/activate
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          pip install schedule requests python-dateutil
+          pip install -r requirements.txt
 
-      - name: Initialiser logs HTML
+      - name: Create directories
         run: |
-          mkdir -p workflow_logs
-          echo "<html><body><h2>Workflow #${{ github.run_id }} Logs</h2><ul>" > workflow_logs/logs.html
-
-      # -------------------------------
-      # Sauvegarde WordPress
-      # -------------------------------
-      - name: Sauvegarde WordPress
-        continue-on-error: true
-        run: |
-          source .venv/bin/activate
           mkdir -p $BACKUP_DIR
-          if python wp_backup_restore.py fetch --url=$SITE_URL && python wp_backup_restore.py backup --source=wordpress_site; then
-            echo "<li style='color:green;'>Sauvegarde OK</li>" >> workflow_logs/logs.html
-          else
-            echo "<li style='color:red;'>ERREUR Sauvegarde</li>" >> workflow_logs/logs.html
-            exit 1
-          fi
-
-      # -------------------------------
-      # Monitoring WordPress
-      # -------------------------------
-      - name: Monitoring WordPress
-        continue-on-error: true
-        run: |
-          source .venv/bin/activate
-          mkdir -p monitor_data
-          if python monitor.py --scheduled; then
-            echo "<li style='color:green;'>Monitoring OK</li>" >> workflow_logs/logs.html
-          else
-            echo "<li style='color:red;'>ERREUR Monitoring</li>" >> workflow_logs/logs.html
-            exit 1
-          fi
-
-      # -------------------------------
-      # Rapport quotidien
-      # -------------------------------
-      - name: Rapport quotidien
-        if: github.event_name == 'schedule'
-        continue-on-error: true
-        run: |
-          source .venv/bin/activate
-          if python report_generator.py --days 7 > report_7_days.txt; then
-            echo "<li style='color:green;'>Rapport quotidien OK</li>" >> workflow_logs/logs.html
-          else
-            echo "<li style='color:red;'>ERREUR Rapport quotidien</li>" >> workflow_logs/logs.html
-            exit 1
-          fi
-
-      # -------------------------------
-      # Restauration manuelle
-      # -------------------------------
-      - name: Restauration WordPress (si manuel)
-        if: github.event_name == 'workflow_dispatch'
-        continue-on-error: true
-        run: |
-          source .venv/bin/activate
           mkdir -p $RESTORE_DIR
-          if python wp_backup_restore.py restore "$RESTORE_DIR"; then
-            echo "<li style='color:green;'>Restauration OK</li>" >> workflow_logs/logs.html
+          mkdir -p workflow-logs
+
+      - name: Run backup script
+        run: |
+          source .venv/bin/activate
+          if python wp-backup-restore.py fetch --site-url "$SITE_URL" --backup-dir "$BACKUP_DIR"; then
+            echo "<li style='color:green;'>Sauvegarde OK</li>" >> workflow-logs/logs.html
           else
-            echo "<li style='color:red;'>ERREUR Restauration</li>" >> workflow_logs/logs.html
+            echo "<li style='color:red;'>ERREUR Sauvegarde</li>" >> workflow-logs/logs.html
             exit 1
           fi
 
-      # -------------------------------
-      # Clore logs HTML
-      # -------------------------------
-      - name: Fermer logs HTML
-        run: echo "</ul></body></html>" >> workflow_logs/logs.html
-
-      # -------------------------------
-      # Upload artefacts
-      # -------------------------------
-      - uses: actions/upload-artifact@v4
-        with:
-          name: wordpress-artifacts-${{ github.run_id }}
-          path: |
-            $BACKUP_DIR/
-            monitor_data/
-            report_7_days.txt
-            workflow_logs/
-            $RESTORE_DIR/
-
-      # -------------------------------
-      # Notification Email HTML
-      # -------------------------------
-      - name: Notification Email HTML
+      - name: Send notification email
         if: failure()
         run: |
-          python - <<EOF
-          import smtplib, os
-          from email.mime.text import MIMEText
+          source .venv/bin/activate
+          python send_alert_email.py \
+            --to "$ALERT_EMAIL" \
+            --subject "Échec sauvegarde WordPress" \
+            --smtp-server "$SMTP_SERVER" \
+            --smtp-port "$SMTP_PORT" \
+            --smtp-user "$SMTP_USER" \
+            --smtp-pass "$SMTP_PASS"
 
-          with open("workflow_logs/logs.html", "r") as f:
-              html_content = f.read()
+  wordpress-restore:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'  # restauration seulement en manuel
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-          msg = MIMEText(html_content, "html")
-          msg['Subject'] = f"ALERTE WordPress CI/CD - Workflow #${{ github.run_id }} ÉCHEC"
-          msg['From'] = os.environ['SMTP_USER']
-          msg['To'] = os.environ['ALERT_EMAIL']
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-          with smtplib.SMTP(os.environ['SMTP_SERVER'], int(os.environ['SMTP_PORT'])) as server:
-              server.starttls()
-              server.login(os.environ['SMTP_USER'], os.environ['SMTP_PASS'])
-              server.send_message(msg)
-          EOF
+      - name: Activate venv & restore
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          mkdir -p $RESTORE_DIR
+          python wp-backup-restore.py restore --backup-dir "$BACKUP_DIR" --restore-dir "$RESTORE_DIR"
