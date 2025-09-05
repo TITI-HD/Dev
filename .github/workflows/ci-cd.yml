@@ -19,6 +19,7 @@ env:
   SMTP_USER: "danieltiti882@gmail.com"
   SMTP_PASS: ${{ secrets.SMTP_PASS }}
   VENV_PATH: ".venv"
+  SCRIPT_PATH: "wp-backup-restore.py"
 
 jobs:
   setup:
@@ -60,9 +61,16 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
+      - name: Check script exists
+        run: |
+          if [ ! -f "${{ env.SCRIPT_PATH }}" ]; then
+            echo "ERREUR: Le script wp-backup-restore.py n'existe pas dans le dépôt."
+            exit 1
+          fi
+
       - name: Run backup script
         run: |
-          ${{ env.VENV_PATH }}/bin/python wp-backup-restore.py fetch --site-url "$SITE_URL" --backup-dir "$BACKUP_DIR" \
+          ${{ env.VENV_PATH }}/bin/python ${{ env.SCRIPT_PATH }} fetch --site-url "$SITE_URL" --backup-dir "$BACKUP_DIR" \
             && echo "<li style='color:green;'>Sauvegarde OK</li>" >> workflow-logs/logs.html \
             || (echo "<li style='color:red;'>ERREUR Sauvegarde</li>" >> workflow-logs/logs.html && exit 1)
 
@@ -85,8 +93,15 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
+      - name: Check script exists
+        run: |
+          if [ ! -f "${{ env.SCRIPT_PATH }}" ]; then
+            echo "ERREUR: Le script wp-backup-restore.py n'existe pas dans le dépôt."
+            exit 1
+          fi
+
       - name: Restore backup
         run: |
           mkdir -p $RESTORE_DIR
-          ${{ env.VENV_PATH }}/bin/python wp-backup-restore.py fetch --site-url "$SITE_URL" --backup-dir "$BACKUP_DIR"
-          ${{ env.VENV_PATH }}/bin/python wp-backup-restore.py restore --dir "$RESTORE_DIR"
+          ${{ env.VENV_PATH }}/bin/python ${{ env.SCRIPT_PATH }} fetch --site-url "$SITE_URL" --backup-dir "$BACKUP_DIR"
+          ${{ env.VENV_PATH }}/bin/python ${{ env.SCRIPT_PATH }} restore --dir "$RESTORE_DIR"
