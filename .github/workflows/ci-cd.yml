@@ -60,6 +60,7 @@ jobs:
           else
             echo "<li style='color:red;'>ERREUR Sauvegarde</li>" >> workflow_logs/logs.html
             exit 1
+          fi
 
       # -------------------------------
       # Monitoring WordPress
@@ -74,6 +75,7 @@ jobs:
           else
             echo "<li style='color:red;'>ERREUR Monitoring</li>" >> workflow_logs/logs.html
             exit 1
+          fi
 
       # -------------------------------
       # Rapport quotidien
@@ -88,6 +90,7 @@ jobs:
           else
             echo "<li style='color:red;'>ERREUR Rapport quotidien</li>" >> workflow_logs/logs.html
             exit 1
+          fi
 
       # -------------------------------
       # Restauration manuelle
@@ -103,6 +106,7 @@ jobs:
           else
             echo "<li style='color:red;'>ERREUR Restauration</li>" >> workflow_logs/logs.html
             exit 1
+          fi
 
       # -------------------------------
       # Clore logs HTML
