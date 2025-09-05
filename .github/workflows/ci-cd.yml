@@ -12,11 +12,11 @@ env:
   SITE_URL: "https://oupssecuretest.wordpress.com"
   BACKUP_DIR: "backups"
   RESTORE_DIR: "restored-backups"
-  ALERT_EMAIL: "danieltiti882@gmail.com"   # email destinataire des alertes
+  ALERT_EMAIL: "danieltiti882@gmail.com"
   SMTP_SERVER: "smtp.gmail.com"
   SMTP_PORT: "587"
   SMTP_USER: "danieltiti882@gmail.com"
-  SMTP_PASS: ${{ secrets.SMTP_PASS }}      # 🔑 mot de passe stocké dans GitHub Secrets
+  SMTP_PASS: ${{ secrets.SMTP_PASS }}
 
 jobs:
   setup-and-monitor:
@@ -29,7 +29,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      # Cache pip pour accélérer les builds
+      # Cache pip
       - uses: actions/cache@v3
         with:
           path: ~/.cache/pip
@@ -44,7 +44,7 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install schedule requests python-dateutil
 
-      # Vérifier imports
+      # Vérifier imports Python
       - name: Vérifier imports Python
         run: |
           source .venv/bin/activate
@@ -64,7 +64,9 @@ jobs:
           else
             echo "Échec sauvegarde" > backup_report/report_backup.md
             exit 1
+          fi
         continue-on-error: false
+
       - uses: actions/upload-artifact@v4
         with:
           name: wordpress-backups-${{ github.run_id }}
@@ -84,6 +86,7 @@ jobs:
           else
             echo "Échec restauration" > restore_report/report_restore.md
             exit 1
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: wordpress-restore-${{ github.run_id }}
