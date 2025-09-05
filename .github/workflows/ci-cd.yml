@@ -17,7 +17,7 @@ env:
   SMTP_SERVER: "smtp.gmail.com"
   SMTP_PORT: 587
   SMTP_USER: "danieltiti882@gmail.com"
-  SMTP_PASS: ${{ secrets.SMTP_PASS }}  # Met ton mot de passe ou token dans GitHub Secrets
+  SMTP_PASS: ${{ secrets.SMTP_PASS }}
 
 jobs:
   wordpress-backup:
@@ -43,9 +43,15 @@ jobs:
           mkdir -p $RESTORE_DIR
           mkdir -p workflow-logs
 
+      - name: Debug - List files
+        run: |
+          pwd
+          ls -R
+
       - name: Run backup script
         run: |
           source .venv/bin/activate
+          # Adapte le chemin ici si nécessaire
           if python wp-backup-restore.py fetch --site-url "$SITE_URL" --backup-dir "$BACKUP_DIR"; then
             echo "<li style='color:green;'>Sauvegarde OK</li>" >> workflow-logs/logs.html
           else
@@ -67,7 +73,7 @@ jobs:
 
   wordpress-restore:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'  # restauration seulement en manuel
+    if: github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -77,11 +83,11 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Activate venv & restore
+      - name: Restore backup
         run: |
           python -m venv .venv
           source .venv/bin/activate
           mkdir -p $RESTORE_DIR
-          python wp_backup_restore.py fetch --url="$SITE_URL" --source="$BACKUP_DIR"
-          python wp_backup_restore.py restore --dir="$RESTORE_DIR"
-
+          # Adapte le nom du script ici aussi
+          python wp-backup-restore.py fetch --url="$SITE_URL" --source="$BACKUP_DIR"
+          python wp-backup-restore.py restore --dir="$RESTORE_DIR"
