@@ -1,6 +1,5 @@
-name: WordPress CI/CD - Full Monitoring & Manual Restore
+name: WordPress CI/CD - Full Monitoring, Backup & Restore with HTML Email Logs
 
-# Déclencheurs
 on:
   push:
     branches: ["main"]
@@ -8,9 +7,8 @@ on:
   schedule:
     - cron: '0 */3 * * *'   # Monitoring toutes les 3h
     - cron: '0 8 * * *'     # Rapport quotidien à 08:00
-  workflow_dispatch:        # Permet le lancement manuel pour la restauration
+  workflow_dispatch:        # Permet restauration manuelle
 
-# Variables d'environnement
 env:
   SITE_URL: "https://oupssecuretest.wordpress.com"
   BACKUP_DIR: "backups"
@@ -22,93 +20,19 @@ env:
   SMTP_PASS: ${{ secrets.SMTP_PASS }}
 
 jobs:
-  setup-and-monitor:
+  ci-cd:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # Installer Python
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      # Cache pip
       - uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-
-      # Créer venv et installer dépendances
-      - name: Installer dépendances Python
-        run: |
-          python -m venv .venv
-          source .venv/bin/activate
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          pip install schedule requests python-dateutil
-
-      # Vérifier imports Python
-      - name: Vérifier imports Python
-        run: |
-          source .venv/bin/activate
-          python -c "import monitor"
-          python -c "import wp_backup_restore"
-          python -c "import report_generator"
-
-      # Backup WordPress
-      - name: Sauvegarde WordPress
-        run: |
-          source .venv/bin/activate
-          python wp_backup_restore.py backup
-          mkdir -p backup_report
-          if [ -d "$BACKUP_DIR" ] && [ "$(ls -A $BACKUP_DIR)" ]; then
-            count=$(find "$BACKUP_DIR" -type f | wc -l)
-            echo "Sauvegarde OK ($count fichiers)" > backup_report/report_backup.md
-          else
-            echo "Échec sauvegarde" > backup_report/report_backup.md
-            exit 1
-        continue-on-error: false
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: wordpress-backups-${{ github.run_id }}
-          path: |
-            $BACKUP_DIR/
-            backup_report/
-
-      # Monitoring WordPress
-      - name: Monitoring WordPress
-        run: |
-          source .venv/bin/activate
-          mkdir -p monitor_data
-          python monitor.py --scheduled
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: monitoring-${{ github.run_id }}
-          path: monitor_data/
-
-      # Rapport quotidien
-      - name: Rapport quotidien
-        if: github.event_name == 'schedule'
-        run: |
-          source .venv/bin/activate
-          python report_generator.py --days 7 > report_7_days.txt
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: daily-report-${{ github.run_id }}
-          path: report_7_days.txt
-
-  manual-restore:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'  # Ne se lance que manuellement
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
 
       - name: Créer venv et installer dépendances
         run: |
@@ -118,19 +42,107 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install schedule requests python-dateutil
 
-      - name: Restauration WordPress (manuelle)
+      - name: Initialiser logs HTML
+        run: |
+          mkdir -p workflow_logs
+          echo "<html><body><h2>Workflow #${{ github.run_id }} Logs</h2><ul>" > workflow_logs/logs.html
+
+      # -------------------------------
+      # Sauvegarde WordPress
+      # -------------------------------
+      - name: Sauvegarde WordPress
+        continue-on-error: true
         run: |
           source .venv/bin/activate
-          python wp_backup_restore.py restore "$RESTORE_DIR"
-          mkdir -p restore_report
-          if [ -d "$RESTORE_DIR" ] && [ "$(ls -A $RESTORE_DIR)" ]; then
-            count=$(find "$RESTORE_DIR" -type f | wc -l)
-            echo "Restauration OK ($count fichiers)" > restore_report/report_restore.md
+          mkdir -p $BACKUP_DIR
+          if python wp_backup_restore.py fetch --url=$SITE_URL && python wp_backup_restore.py backup --source=wordpress_site; then
+            echo "<li style='color:green;'>Sauvegarde OK</li>" >> workflow_logs/logs.html
           else
-            echo "Échec restauration" > restore_report/report_restore.md
+            echo "<li style='color:red;'>ERREUR Sauvegarde</li>" >> workflow_logs/logs.html
             exit 1
 
+      # -------------------------------
+      # Monitoring WordPress
+      # -------------------------------
+      - name: Monitoring WordPress
+        continue-on-error: true
+        run: |
+          source .venv/bin/activate
+          mkdir -p monitor_data
+          if python monitor.py --scheduled; then
+            echo "<li style='color:green;'>Monitoring OK</li>" >> workflow_logs/logs.html
+          else
+            echo "<li style='color:red;'>ERREUR Monitoring</li>" >> workflow_logs/logs.html
+            exit 1
+
+      # -------------------------------
+      # Rapport quotidien
+      # -------------------------------
+      - name: Rapport quotidien
+        if: github.event_name == 'schedule'
+        continue-on-error: true
+        run: |
+          source .venv/bin/activate
+          if python report_generator.py --days 7 > report_7_days.txt; then
+            echo "<li style='color:green;'>Rapport quotidien OK</li>" >> workflow_logs/logs.html
+          else
+            echo "<li style='color:red;'>ERREUR Rapport quotidien</li>" >> workflow_logs/logs.html
+            exit 1
+
+      # -------------------------------
+      # Restauration manuelle
+      # -------------------------------
+      - name: Restauration WordPress (si manuel)
+        if: github.event_name == 'workflow_dispatch'
+        continue-on-error: true
+        run: |
+          source .venv/bin/activate
+          mkdir -p $RESTORE_DIR
+          if python wp_backup_restore.py restore "$RESTORE_DIR"; then
+            echo "<li style='color:green;'>Restauration OK</li>" >> workflow_logs/logs.html
+          else
+            echo "<li style='color:red;'>ERREUR Restauration</li>" >> workflow_logs/logs.html
+            exit 1
+
+      # -------------------------------
+      # Clore logs HTML
+      # -------------------------------
+      - name: Fermer logs HTML
+        run: echo "</ul></body></html>" >> workflow_logs/logs.html
+
+      # -------------------------------
+      # Upload artefacts
+      # -------------------------------
       - uses: actions/upload-artifact@v4
         with:
-          name: wordpress-restore-${{ github.run_id }}
-          path: restore_report/
+          name: wordpress-artifacts-${{ github.run_id }}
+          path: |
+            $BACKUP_DIR/
+            monitor_data/
+            report_7_days.txt
+            workflow_logs/
+            $RESTORE_DIR/
+
+      # -------------------------------
+      # Notification Email HTML
+      # -------------------------------
+      - name: Notification Email HTML
+        if: failure()
+        run: |
+          python - <<EOF
+          import smtplib, os
+          from email.mime.text import MIMEText
+
+          with open("workflow_logs/logs.html", "r") as f:
+              html_content = f.read()
+
+          msg = MIMEText(html_content, "html")
+          msg['Subject'] = f"ALERTE WordPress CI/CD - Workflow #${{ github.run_id }} ÉCHEC"
+          msg['From'] = os.environ['SMTP_USER']
+          msg['To'] = os.environ['ALERT_EMAIL']
+
+          with smtplib.SMTP(os.environ['SMTP_SERVER'], int(os.environ['SMTP_PORT'])) as server:
+              server.starttls()
+              server.login(os.environ['SMTP_USER'], os.environ['SMTP_PASS'])
+              server.send_message(msg)
+          EOF
