@@ -1,5 +1,6 @@
-name: WordPress CI/CD - Full Monitoring
+name: WordPress CI/CD - Full Monitoring & Manual Restore
 
+# Déclencheurs
 on:
   push:
     branches: ["main"]
@@ -7,7 +8,9 @@ on:
   schedule:
     - cron: '0 */3 * * *'   # Monitoring toutes les 3h
     - cron: '0 8 * * *'     # Rapport quotidien à 08:00
+  workflow_dispatch:        # Permet le lancement manuel pour la restauration
 
+# Variables d'environnement
 env:
   SITE_URL: "https://oupssecuretest.wordpress.com"
   BACKUP_DIR: "backups"
@@ -64,7 +67,6 @@ jobs:
           else
             echo "Échec sauvegarde" > backup_report/report_backup.md
             exit 1
-          fi
         continue-on-error: false
 
       - uses: actions/upload-artifact@v4
@@ -74,30 +76,13 @@ jobs:
             $BACKUP_DIR/
             backup_report/
 
-      # Restore WordPress
-      - name: Restauration WordPress
-        run: |
-          source .venv/bin/activate
-          python wp_backup_restore.py restore "$RESTORE_DIR"
-          mkdir -p restore_report
-          if [ -d "$RESTORE_DIR" ] && [ "$(ls -A $RESTORE_DIR)" ]; then
-            count=$(find "$RESTORE_DIR" -type f | wc -l)
-            echo "Restauration OK ($count fichiers)" > restore_report/report_restore.md
-          else
-            echo "Échec restauration" > restore_report/report_restore.md
-            exit 1
-          fi
-      - uses: actions/upload-artifact@v4
-        with:
-          name: wordpress-restore-${{ github.run_id }}
-          path: restore_report/
-
-      # Lancer le monitoring
+      # Monitoring WordPress
       - name: Monitoring WordPress
         run: |
           source .venv/bin/activate
           mkdir -p monitor_data
           python monitor.py --scheduled
+
       - uses: actions/upload-artifact@v4
         with:
           name: monitoring-${{ github.run_id }}
@@ -109,7 +94,43 @@ jobs:
         run: |
           source .venv/bin/activate
           python report_generator.py --days 7 > report_7_days.txt
+
       - uses: actions/upload-artifact@v4
         with:
           name: daily-report-${{ github.run_id }}
           path: report_7_days.txt
+
+  manual-restore:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'  # Ne se lance que manuellement
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Créer venv et installer dépendances
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install schedule requests python-dateutil
+
+      - name: Restauration WordPress (manuelle)
+        run: |
+          source .venv/bin/activate
+          python wp_backup_restore.py restore "$RESTORE_DIR"
+          mkdir -p restore_report
+          if [ -d "$RESTORE_DIR" ] && [ "$(ls -A $RESTORE_DIR)" ]; then
+            count=$(find "$RESTORE_DIR" -type f | wc -l)
+            echo "Restauration OK ($count fichiers)" > restore_report/report_restore.md
+          else
+            echo "Échec restauration" > restore_report/report_restore.md
+            exit 1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wordpress-restore-${{ github.run_id }}
+          path: restore_report/
