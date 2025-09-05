@@ -18,31 +18,14 @@ env:
   SMTP_PORT: 587
   SMTP_USER: "danieltiti882@gmail.com"
   SMTP_PASS: ${{ secrets.SMTP_PASS }}
-  VENV_PATH: ".venv"
-  SCRIPT_PATH: "monitor.py"
   MONITOR_DIR: "monitor_data"
 
 jobs:
   setup:
     runs-on: ubuntu-latest
-    outputs:
-      venv-path: ${{ steps.venv.outputs.venv-path }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Create venv and install dependencies
-        id: venv
-        run: |
-          python -m venv $VENV_PATH
-          $VENV_PATH/bin/pip install --upgrade pip
-          $VENV_PATH/bin/pip install requests schedule python-dateutil
-          echo "venv-path=$VENV_PATH" >> $GITHUB_OUTPUT
 
       - name: Create directories
         run: |
@@ -51,66 +34,32 @@ jobs:
           mkdir -p $MONITOR_DIR
           mkdir -p workflow-logs
 
-      - name: Debug - List files
-        run: |
-          pwd
-          ls -R
-
   wordpress-monitoring:
-    needs: setup
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Check script exists
+      - name: Run monitoring script
         run: |
-          if [ ! -f "${{ env.SCRIPT_PATH }}" ]; then
-            echo "ERREUR: Le script monitor.py n'existe pas dans le dépôt."
+          # Vérifier si le script existe
+          if [ ! -f "monitor.py" ]; then
+            echo "ERREUR: monitor.py n'existe pas"
+            exit 1
+          fi
+          
+          # Exécuter le monitoring
+          python monitor.py --once
+          
+          # Vérifier le résultat
+          if [ $? -eq 0 ]; then
+            echo "<li style='color:green;'>Monitoring OK</li>" >> workflow-logs/logs.html
+          else
+            echo "<li style='color:red;'>ERREUR Monitoring</li>" >> workflow-logs/logs.html
             exit 1
           fi
 
-      - name: Run monitoring script
-        run: |
-          ${{ env.VENV_PATH }}/bin/python ${{ env.SCRIPT_PATH }} --once \
-            && echo "<li style='color:green;'>Monitoring OK</li>" >> workflow-logs/logs.html \
-            || (echo "<li style='color:red;'>ERREUR Monitoring</li>" >> workflow-logs/logs.html && exit 1)
-
-      - name: Send notification email
-        if: failure()
-        run: |
-          ${{ env.VENV_PATH }}/bin/python ${{ env.SCRIPT_PATH }} --report
-          # Envoyer le rapport par email en cas d'échec
-          ${{ env.VENV_PATH }}/bin/python -c "
-          import os, smtplib
-          from email.mime.text import MIMEText
-          from email.mime.multipart import MIMEMultipart
-          
-          # Lire le dernier rapport
-          import glob
-          reports = sorted(glob.glob('monitor_data/report_*.txt'))
-          if reports:
-              with open(reports[-1], 'r') as f:
-                  report_content = f.read()
-          else:
-              report_content = 'Aucun rapport disponible'
-          
-          # Configurer l'email
-          msg = MIMEMultipart()
-          msg['From'] = os.environ['SMTP_USER']
-          msg['To'] = os.environ['ALERT_EMAIL']
-          msg['Subject'] = 'Échec monitoring WordPress'
-          msg.attach(MIMEText(f'Le monitoring WordPress a échoué.\\n\\nRapport:\\n{report_content}', 'plain', 'utf-8'))
-          
-          # Envoyer l'email
-          with smtplib.SMTP(os.environ['SMTP_SERVER'], int(os.environ['SMTP_PORT'])) as server:
-              server.starttls()
-              server.login(os.environ['SMTP_USER'], os.environ['SMTP_PASS'])
-              server.send_message(msg)
-          "
-
   wordpress-backup-only:
-    needs: setup
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -118,12 +67,15 @@ jobs:
 
       - name: Run backup only
         run: |
-          ${{ env.VENV_PATH }}/bin/python ${{ env.SCRIPT_PATH }} --backup \
-            && echo "<li style='color:green;'>Backup OK</li>" >> workflow-logs/logs.html \
-            || (echo "<li style='color:red;'>ERREUR Backup</li>" >> workflow-logs/logs.html && exit 1)
+          python monitor.py --backup
+          if [ $? -eq 0 ]; then
+            echo "<li style='color:green;'>Backup OK</li>" >> workflow-logs/logs.html
+          else
+            echo "<li style='color:red;'>ERREUR Backup</li>" >> workflow-logs/logs.html
+            exit 1
+          fi
 
   wordpress-restore:
-    needs: setup
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
     steps:
@@ -142,11 +94,15 @@ jobs:
 
       - name: Restore from backup
         run: |
-          ${{ env.VENV_PATH }}/bin/python ${{ env.SCRIPT_PATH }} --restore "${{ steps.find-backup.outputs.backup-file }}"
-          echo "<li style='color:green;'>Restauration OK depuis ${{ steps.find-backup.outputs.backup-file }}</li>" >> workflow-logs/logs.html
+          python monitor.py --restore "${{ steps.find-backup.outputs.backup-file }}"
+          if [ $? -eq 0 ]; then
+            echo "<li style='color:green;'>Restauration OK</li>" >> workflow-logs/logs.html
+          else
+            echo "<li style='color:red;'>ERREUR Restauration</li>" >> workflow-logs/logs.html
+            exit 1
+          fi
 
   daily-report:
-    needs: setup
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule' && github.event.schedule == '0 8 * * *'
     steps:
@@ -155,34 +111,5 @@ jobs:
 
       - name: Generate daily report
         run: |
-          ${{ env.VENV_PATH }}/bin/python ${{ env.SCRIPT_PATH }} --report
+          python monitor.py --report
           echo "<li style='color:green;'>Rapport quotidien généré</li>" >> workflow-logs/logs.html
-
-      - name: Send daily report via email
-        run: |
-          ${{ env.VENV_PATH }}/bin/python -c "
-          import os, smtplib, glob
-          from email.mime.text import MIMEText
-          from email.mime.multipart import MIMEMultipart
-          
-          # Trouver le dernier rapport
-          reports = sorted(glob.glob('monitor_data/report_*.txt'))
-          if reports:
-              with open(reports[-1], 'r') as f:
-                  report_content = f.read()
-          else:
-              report_content = 'Aucun rapport disponible'
-          
-          # Configurer l'email
-          msg = MIMEMultipart()
-          msg['From'] = os.environ['SMTP_USER']
-          msg['To'] = os.environ['ALERT_EMAIL']
-          msg['Subject'] = 'Rapport quotidien WordPress'
-          msg.attach(MIMEText(f'Rapport quotidien de monitoring WordPress:\\n\\n{report_content}', 'plain', 'utf-8'))
-          
-          # Envoyer l'email
-          with smtplib.SMTP(os.environ['SMTP_SERVER'], int(os.environ['SMTP_PORT'])) as server:
-              server.starttls()
-              server.login(os.environ['SMTP_USER'], os.environ['SMTP_PASS'])
-              server.send_message(msg)
-          "
