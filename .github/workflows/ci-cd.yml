@@ -40,6 +40,10 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
+      - name: Install dependencies
+        run: |
+          pip install requests schedule python-dateutil
+
       - name: Run monitoring script
         run: |
           if [ ! -f "monitor.py" ]; then
@@ -61,6 +65,10 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          pip install requests schedule python-dateutil
 
       - name: Run backup only
         run: |
@@ -85,6 +93,10 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          pip install requests schedule python-dateutil
 
       - name: Find latest backup
         id: find-backup
@@ -112,6 +124,10 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          pip install requests schedule python-dateutil
 
       - name: Generate daily report
         run: |
