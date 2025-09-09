@@ -14,6 +14,7 @@ import json
 import requests
 from pathlib import Path
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
 
 # === Configuration par défaut ===
 DEFAULT_SOURCE = Path("wordpress_site")
@@ -57,15 +58,23 @@ def fetch_wordpress_site(url: str, out_dir: Path):
         "posts.json": f"{url}/wp-json/wp/v2/posts",
         "pages.json": f"{url}/wp-json/wp/v2/pages",
     }
-    for filename, endpoint in endpoints.items():
-        try:
-            resp = requests.get(endpoint, timeout=15)
-            resp.raise_for_status()
-            file_path = out_dir / filename
-            file_path.write_bytes(resp.content)
-            log(f"Téléchargé : {endpoint} -> {file_path}", "SUCCESS")
-        except Exception as e:
-            log(f"Échec téléchargement {endpoint}: {e}", "ERROR")
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {executor.submit(fetch_endpoint, endpoint, out_dir / filename): (filename, endpoint) for filename, endpoint in endpoints.items()}
+        for future in futures:
+            filename, endpoint = futures[future]
+            try:
+                future.result()
+                log(f"Téléchargé : {endpoint} -> {out_dir / filename}", "SUCCESS")
+            except Exception as e:
+                log(f"Échec téléchargement {endpoint}: {e}", "ERROR")
+
+def fetch_endpoint(endpoint: str, file_path: Path):
+    try:
+        resp = requests.get(endpoint, timeout=15)
+        resp.raise_for_status()
+        file_path.write_bytes(resp.content)
+    except Exception as e:
+        raise e
 
 # === Sauvegarde ===
 def backup_wordpress_content(source_dir: Path = DEFAULT_SOURCE):

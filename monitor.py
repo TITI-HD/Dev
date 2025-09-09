@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 WordPress Monitoring & Backup & Restore & Report - Tout-en-un
@@ -80,27 +81,43 @@ def log(message: str, level="INFO"):
     print(message)
 
 # === Incident Manager ===
-def add(self, type_: str, details: Dict, severity="medium") -> Dict:
-    history = self.load_incidents()
-    incident = {
-        "timestamp": datetime.now().isoformat(),
-        "type": type_,
-        "severity": severity,
-        "details": details
-    }
-    history.append(incident)
-    if len(history) > 100:
-        history = history[-100:]
-    self.save_incidents(history)
+class IncidentManager:
+    def __init__(self, history_file: Path):
+        self.history_file = history_file
+        self.load_incidents()
 
-    # Envoi automatique email pour incidents medium ou high
-    if severity in ["medium", "high"]:
-        subject = f"[ALERTE WP] {type_} ({severity})"
-        body = f"Incident détecté:\nType: {type_}\nSévérité: {severity}\nDétails: {details}\nHorodatage: {incident['timestamp']}"
-        send_alert(subject, body, incident_type=type_)
+    def load_incidents(self) -> List[Dict]:
+        if self.history_file.exists():
+            with self.history_file.open('r', encoding='utf-8') as f:
+                return json.load(f)
+        return []
 
-    return incident
+    def save_incidents(self, incidents: List[Dict]):
+        with self.history_file.open('w', encoding='utf-8') as f:
+            json.dump(incidents, f, ensure_ascii=False, indent=4)
 
+    def add(self, type_: str, details: Dict, severity="medium") -> Dict:
+        history = self.load_incidents()
+        incident = {
+            "timestamp": datetime.now().isoformat(),
+            "type": type_,
+            "severity": severity,
+            "details": details
+        }
+        history.append(incident)
+        if len(history) > 100:
+            history = history[-100:]
+        self.save_incidents(history)
+
+        # Envoi automatique email pour incidents medium ou high
+        if severity in ["medium", "high"]:
+            subject = f"[ALERTE WP] {type_} ({severity})"
+            body = f"Incident détecté:\nType: {type_}\nSévérité: {severity}\nDétails: {details}\nHorodatage: {incident['timestamp']}"
+            send_alert(subject, body, incident_type=type_)
+
+        return incident
+
+incident_manager = IncidentManager(config.INCIDENT_HISTORY_FILE)
 
 # === Utilitaires ===
 def compute_hash(content: str) -> str:
@@ -130,7 +147,6 @@ def send_alert(subject: str, body: str, incident_type="general") -> bool:
     except Exception as e:
         log(f"Erreur alerte: {e}", "ERROR")
         return False
-
 
 def run_all():
     log("=== Début du cycle de surveillance ===")
@@ -313,36 +329,4 @@ if __name__=="__main__":
     parser.add_argument("--restore", type=str, help="Restauration depuis un fichier zip")
     parser.add_argument("--report", action="store_true", help="Générer rapport uniquement")
     parser.add_argument("--test", action="store_true", help="Exécuter tests unitaires simples")
-    args = parser.parse_args()
-
-    if args.test:
-        log("Tests unitaires simples...")
-        assert compute_hash("abc") == hashlib.sha256(b"abc").hexdigest()
-        log("Test hash OK")
-        log("Tous tests OK ✅")
-        sys.exit(0)
-
-    if args.restore:
-        restore_site(Path(args.restore))
-        sys.exit(0)
-
-    if args.backup:
-        backup_site()
-        sys.exit(0)
-
-    if args.report:
-        generate_report()
-        sys.exit(0)
-
-    if args.once:
-        run_all()
-        sys.exit(0)
-
-    # Planification toutes les X heures
-    import schedule
-    schedule.every(config.CHECK_INTERVAL_HOURS).hours.do(run_all)
-    log(f"Lancement scheduler toutes les {config.CHECK_INTERVAL_HOURS} heures ⏱️")
-    run_all()  # premier run immédiat
-    while True:
-        schedule.run_pending()
-        time.sleep(60)
+    args = parser.parse

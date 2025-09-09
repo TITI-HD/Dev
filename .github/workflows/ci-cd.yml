@@ -47,10 +47,10 @@ jobs:
             echo "ERREUR: monitor.py n'existe pas"
             exit 1
           fi
-          
+
           # Exécuter le monitoring
           python monitor.py --once
-          
+
           # Vérifier le résultat
           if [ $? -eq 0 ]; then
             echo "<li style='color:green;'>Monitoring OK</li>" >> workflow-logs/logs.html
