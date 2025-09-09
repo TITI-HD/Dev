@@ -42,16 +42,13 @@ jobs:
 
       - name: Run monitoring script
         run: |
-          # Vérifier si le script existe
           if [ ! -f "monitor.py" ]; then
             echo "ERREUR: monitor.py n'existe pas"
             exit 1
           fi
 
-          # Exécuter le monitoring
           python monitor.py --once
 
-          # Vérifier le résultat
           if [ $? -eq 0 ]; then
             echo "<li style='color:green;'>Monitoring OK</li>" >> workflow-logs/logs.html
           else
@@ -68,12 +65,19 @@ jobs:
       - name: Run backup only
         run: |
           python monitor.py --backup
+
           if [ $? -eq 0 ]; then
             echo "<li style='color:green;'>Backup OK</li>" >> workflow-logs/logs.html
           else
             echo "<li style='color:red;'>ERREUR Backup</li>" >> workflow-logs/logs.html
             exit 1
           fi
+
+      - name: Upload vers GitHub Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: sauvegarde-wordpress
+          path: backups/
 
   wordpress-restore:
     runs-on: ubuntu-latest

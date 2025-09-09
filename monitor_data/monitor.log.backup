@@ -1,340 +1,0 @@
-[2025-08-27 16:19:20] Ã°ÂÂÂ DÃÂ©marrage de la surveillance WordPress
-[2025-08-27 16:19:20] Ã°ÂÂÂ Site surveillÃÂ©: https://oupssecuretest.wordpress.com
-[2025-08-27 16:19:20] Ã°ÂÂÂ VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 16:19:23] Ã¢ÂÂ Site accessible et rÃÂ©pond correctement
-[2025-08-27 16:19:23] Ã°ÂÂÂ VÃÂ©rification de l'intÃÂ©gritÃÂ© du contenu...
-[2025-08-27 16:19:25] Ã°ÂÂÂ RÃÂ©fÃÂ©rence crÃÂ©ÃÂ©e: homepage
-[2025-08-27 16:19:28] Ã°ÂÂÂ RÃÂ©fÃÂ©rence crÃÂ©ÃÂ©e: rss
-[2025-08-27 16:19:29] Ã°ÂÂÂ RÃÂ©fÃÂ©rence crÃÂ©ÃÂ©e: comments
-[2025-08-27 16:19:29] Ã°ÂÂÂ Recherche de patterns suspects...
-[2025-08-27 16:19:31] Ã¢ÂÂ Aucun pattern suspect dÃÂ©tectÃÂ©
-[2025-08-27 16:19:34] Ã¢ÂÂ Erreur lors de l'envoi de l'alerte: [Errno 11001] getaddrinfo failed
-[2025-08-27 16:19:34] Ã¢ÂÂ Aucun problÃÂ¨me dÃÂ©tectÃÂ© - Rapport d'inaction envoyÃÂ©
-[2025-08-27 16:19:34] Ã¢ÂÂ Surveillance terminÃÂ©e
-[2025-08-27 16:30:20] DEBUT: DÃÂ©marrage de la surveillance WordPress
-[2025-08-27 16:30:20] INFO: Site surveillÃÂ©: https://oupssecuretest.wordpress.com
-[2025-08-27 16:30:20] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 16:30:23] SUCCES: Site accessible et rÃÂ©pond correctement
-[2025-08-27 16:30:23] VERIFICATION: VÃÂ©rification de l'intÃÂ©gritÃÂ© du contenu...
-[2025-08-27 16:30:25] MODIFICATION: Changement dÃÂ©tectÃÂ©: homepage
-[2025-08-27 16:30:29] MODIFICATION: Changement dÃÂ©tectÃÂ©: comments
-[2025-08-27 16:30:29] VERIFICATION: Recherche de patterns suspects...
-[2025-08-27 16:30:31] SUCCES: Aucun pattern suspect dÃÂ©tectÃÂ©
-[2025-08-27 16:30:31] ATTENTION: Configuration SMTP incomplÃÂ¨te - impossible d'envoyer une alerte
-[2025-08-27 16:30:31] ALERTE: Problemes dÃÂ©tectÃÂ©s - Alertes envoyÃÂ©es
-[2025-08-27 16:30:31] FIN: Surveillance terminÃÂ©e
-[2025-08-27 16:36:24] DEBUT: DÃÂ©marrage de la surveillance WordPress
-[2025-08-27 16:36:24] INFO: Site surveillÃÂ©: https://oupssecuretest.wordpress.com
-[2025-08-27 16:36:24] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 16:36:30] SUCCES: Site accessible et rÃÂ©pond correctement
-[2025-08-27 16:36:30] VERIFICATION: VÃÂ©rification de l'intÃÂ©gritÃÂ© du contenu...
-[2025-08-27 16:36:32] MODIFICATION: Changement dÃÂ©tectÃÂ©: homepage
-[2025-08-27 16:36:36] MODIFICATION: Changement dÃÂ©tectÃÂ©: comments
-[2025-08-27 16:36:36] VERIFICATION: Recherche de patterns suspects...
-[2025-08-27 16:36:38] SUCCES: Aucun pattern suspect dÃÂ©tectÃÂ©
-[2025-08-27 16:36:40] ERREUR: Impossible d'envoyer l'alerte: [Errno 11001] getaddrinfo failed
-[2025-08-27 16:36:40] ALERTE: Problemes dÃÂ©tectÃÂ©s - Alertes envoyÃÂ©es
-[2025-08-27 16:36:40] FIN: Surveillance terminÃÂ©e
-[2025-08-27 16:51:38] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 16:51:38] SUCCES: Site accessible et rÃÂ©pond correctement
-[2025-08-27 16:51:38] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 16:53:33] DEBUT: DÃÂ©marrage de la surveillance WordPress
-[2025-08-27 16:53:33] INFO: Site surveillÃÂ©: https://oupssecuretest.wordpress.com
-[2025-08-27 16:53:33] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 16:53:37] SUCCES: Site accessible et rÃÂ©pond correctement
-[2025-08-27 16:53:37] VERIFICATION: VÃÂ©rification de l'intÃÂ©gritÃÂ© du contenu...
-[2025-08-27 16:53:38] MODIFICATION: Changement dÃÂ©tectÃÂ©: homepage
-[2025-08-27 16:53:42] MODIFICATION: Changement dÃÂ©tectÃÂ©: comments
-[2025-08-27 16:53:42] VERIFICATION: Recherche de patterns suspects...
-[2025-08-27 16:53:44] SUCCES: Aucun pattern suspect dÃÂ©tectÃÂ©
-[2025-08-27 16:53:47] ERREUR: Impossible d'envoyer l'alerte: [Errno 11001] getaddrinfo failed
-[2025-08-27 16:53:47] ALERTE: Problemes dÃÂ©tectÃÂ©s - Alertes envoyÃÂ©es
-[2025-08-27 16:53:47] FIN: Surveillance terminÃÂ©e
-[2025-08-27 16:54:04] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 16:54:04] SUCCES: Site accessible et rÃÂ©pond correctement
-[2025-08-27 16:54:04] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 17:10:45] DEBUT: DÃÂ©marrage de la surveillance WordPress
-[2025-08-27 17:10:45] INFO: Site surveillÃÂ©: https://oupssecuretest.wordpress.com
-[2025-08-27 17:10:45] SUCCES: Aucun problÃÂ¨me dÃÂ©tectÃÂ© - Rapport d'inaction envoyÃÂ©
-[2025-08-27 17:10:45] FIN: Surveillance terminÃÂ©e
-[2025-08-27 17:10:45] DEBUT: DÃÂ©marrage de la surveillance WordPress
-[2025-08-27 17:10:45] INFO: Site surveillÃÂ©: https://oupssecuretest.wordpress.com
-[2025-08-27 17:10:45] ALERTE: Problemes dÃÂ©tectÃÂ©s - Alertes envoyÃÂ©es
-[2025-08-27 17:10:45] FIN: Surveillance terminÃÂ©e
-[2025-08-27 17:10:46] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 17:10:46] SUCCES: Site accessible et rÃÂ©pond correctement
-[2025-08-27 17:10:46] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 17:11:06] DEBUT: DÃÂ©marrage de la surveillance WordPress
-[2025-08-27 17:11:06] INFO: Site surveillÃÂ©: https://oupssecuretest.wordpress.com
-[2025-08-27 17:11:06] SUCCES: Aucun problÃÂ¨me dÃÂ©tectÃÂ© - Rapport d'inaction envoyÃÂ©
-[2025-08-27 17:11:06] FIN: Surveillance terminÃÂ©e
-[2025-08-27 17:11:06] DEBUT: DÃÂ©marrage de la surveillance WordPress
-[2025-08-27 17:11:06] INFO: Site surveillÃÂ©: https://oupssecuretest.wordpress.com
-[2025-08-27 17:11:06] ALERTE: Problemes dÃÂ©tectÃÂ©s - Alertes envoyÃÂ©es
-[2025-08-27 17:11:06] FIN: Surveillance terminÃÂ©e
-[2025-08-27 17:11:06] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 17:11:06] SUCCES: Site accessible et rÃÂ©pond correctement
-[2025-08-27 17:11:06] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 17:12:01] Ceci est un test de log
-[2025-08-27 17:13:09] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 17:13:09] SUCCES: Site accessible et rÃÂ©pond correctement
-[2025-08-27 17:13:09] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 17:17:23] DEBUT: DÃÂ©marrage de la surveillance WordPress
-[2025-08-27 17:17:23] INFO: Site surveillÃÂ©: https://oupssecuretest.wordpress.com
-[2025-08-27 17:17:23] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 17:17:26] SUCCES: Site accessible et rÃÂ©pond correctement
-[2025-08-27 17:17:26] VERIFICATION: VÃÂ©rification de l'intÃÂ©gritÃÂ© du contenu...
-[2025-08-27 17:17:28] MODIFICATION: Changement dÃÂ©tectÃÂ©: homepage
-[2025-08-27 17:17:33] MODIFICATION: Changement dÃÂ©tectÃÂ©: comments
-[2025-08-27 17:17:33] VERIFICATION: Recherche de patterns suspects...
-[2025-08-27 17:17:35] SUCCES: Aucun pattern suspect dÃÂ©tectÃÂ©
-[2025-08-27 17:17:39] SUCCES: Alerte envoyÃÂ©e avec succÃÂ¨s
-[2025-08-27 17:17:39] ALERTE: Problemes dÃÂ©tectÃÂ©s - Alertes envoyÃÂ©es
-[2025-08-27 17:17:39] FIN: Surveillance terminÃÂ©e
-[2025-08-27 17:21:41] DEBUT: DÃÂ©marrage de la surveillance WordPress
-[2025-08-27 17:21:41] INFO: Site surveillÃÂ©: https://oupssecuretest.wordpress.com
-[2025-08-27 17:21:41] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 17:21:43] SUCCES: Site accessible et rÃÂ©pond correctement
-[2025-08-27 17:21:43] VERIFICATION: VÃÂ©rification de l'intÃÂ©gritÃÂ© du contenu...
-[2025-08-27 17:21:45] MODIFICATION: Changement dÃÂ©tectÃÂ©: homepage
-[2025-08-27 17:21:49] MODIFICATION: Changement dÃÂ©tectÃÂ©: comments
-[2025-08-27 17:21:49] VERIFICATION: Recherche de patterns suspects...
-[2025-08-27 17:21:51] SUCCES: Aucun pattern suspect dÃÂ©tectÃÂ©
-[2025-08-27 17:21:55] SUCCES: Alerte envoyÃÂ©e avec succÃÂ¨s
-[2025-08-27 17:21:55] ALERTE: Problemes dÃÂ©tectÃÂ©s - Alertes envoyÃÂ©es
-[2025-08-27 17:21:55] FIN: Surveillance terminÃÂ©e
-[2025-08-27 17:31:45] Ceci est un test de log
-[2025-08-27 17:32:10] DEBUT: DÃÂ©marrage de la surveillance WordPress
-[2025-08-27 17:32:10] INFO: Site surveillÃÂ©: https://oupssecuretest.wordpress.com
-[2025-08-27 17:32:10] SUCCES: Aucun problÃÂ¨me dÃÂ©tectÃÂ© - Rapport d'inaction envoyÃÂ©
-[2025-08-27 17:32:10] FIN: Surveillance terminÃÂ©e
-[2025-08-27 17:32:10] DEBUT: DÃÂ©marrage de la surveillance WordPress
-[2025-08-27 17:32:10] INFO: Site surveillÃÂ©: https://oupssecuretest.wordpress.com
-[2025-08-27 17:32:10] ALERTE: Problemes dÃÂ©tectÃÂ©s - Alertes envoyÃÂ©es
-[2025-08-27 17:32:10] FIN: Surveillance terminÃÂ©e
-[2025-08-27 17:32:10] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 17:32:10] SUCCES: Site accessible et rÃÂ©pond correctement
-[2025-08-27 17:32:10] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 18:00:39] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 18:00:39] SUCCES: Site accessible et rÃÂ©pond correctement
-[2025-08-27 18:00:39] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 18:00:39] ERREUR: Site inaccessible: Connection error
-[2025-08-27 18:27:46] DEBUT: DÃÂ©marrage de la surveillance WordPress
-[2025-08-27 18:27:46] INFO: Site surveillÃÂ©: https://oupssecuretest.wordpress.com
-[2025-08-27 18:27:46] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 18:27:50] SUCCES: Site accessible et rÃÂ©pond correctement
-[2025-08-27 18:27:50] VERIFICATION: VÃÂ©rification de l'intÃÂ©gritÃÂ© du contenu...
-[2025-08-27 18:27:53] MODIFICATION: Changement dÃÂ©tectÃÂ©: homepage
-[2025-08-27 18:28:01] MODIFICATION: Changement dÃÂ©tectÃÂ©: comments
-[2025-08-27 18:28:01] VERIFICATION: Recherche de patterns suspects...
-[2025-08-27 18:28:08] SUCCES: Aucun pattern suspect dÃÂ©tectÃÂ©
-[2025-08-27 18:28:10] ERREUR: Impossible d'envoyer l'alerte: [Errno 11001] getaddrinfo failed
-[2025-08-27 18:28:10] ALERTE: Problemes dÃÂ©tectÃÂ©s - Alertes envoyÃÂ©es
-[2025-08-27 18:28:10] FIN: Surveillance terminÃÂ©e
-[2025-08-27 18:29:21] DEBUT: DÃÂ©marrage de la surveillance WordPress
-[2025-08-27 18:29:21] INFO: Site surveillÃÂ©: https://oupssecuretest.wordpress.com
-[2025-08-27 18:29:21] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 18:29:25] SUCCES: Site accessible et rÃÂ©pond correctement
-[2025-08-27 18:29:25] VERIFICATION: VÃÂ©rification de l'intÃÂ©gritÃÂ© du contenu...
-[2025-08-27 18:29:27] MODIFICATION: Changement dÃÂ©tectÃÂ©: homepage
-[2025-08-27 18:29:32] MODIFICATION: Changement dÃÂ©tectÃÂ©: comments
-[2025-08-27 18:29:32] VERIFICATION: Recherche de patterns suspects...
-[2025-08-27 18:29:34] SUCCES: Aucun pattern suspect dÃÂ©tectÃÂ©
-[2025-08-27 18:29:35] ERREUR: Impossible d'envoyer l'alerte: [Errno 11001] getaddrinfo failed
-[2025-08-27 18:29:35] ALERTE: Problemes dÃÂ©tectÃÂ©s - Alertes envoyÃÂ©es
-[2025-08-27 18:29:35] FIN: Surveillance terminÃÂ©e
-[2025-08-27 18:42:15] DEBUT: DÃÂ©marrage de la surveillance WordPress
-[2025-08-27 18:42:15] INFO: Site surveillÃÂ©: https://oupssecuretest.wordpress.com
-[2025-08-27 18:42:15] ALERTE: Problemes dÃÂ©tectÃÂ©s - Alertes envoyÃÂ©es
-[2025-08-27 18:42:15] FIN: Surveillance terminÃÂ©e
-[2025-08-27 18:42:15] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 18:42:15] SUCCES: Site accessible et rÃÂ©pond correctement
-[2025-08-27 18:42:15] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 18:48:55] DEBUT: DÃÂ©marrage de la surveillance WordPress
-[2025-08-27 18:48:55] INFO: Site surveillÃÂ©: https://oupssecuretest.wordpress.com
-[2025-08-27 18:48:55] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 18:48:58] SUCCES: Site accessible et rÃÂ©pond correctement
-[2025-08-27 18:48:58] VERIFICATION: VÃÂ©rification de l'intÃÂ©gritÃÂ© du contenu...
-[2025-08-27 18:49:02] MODIFICATION: Changement dÃÂ©tectÃÂ©: homepage
-[2025-08-27 18:49:10] MODIFICATION: Changement dÃÂ©tectÃÂ©: comments
-[2025-08-27 18:49:10] VERIFICATION: Recherche de patterns suspects...
-[2025-08-27 18:49:17] SUCCES: Aucun pattern suspect dÃÂ©tectÃÂ©
-[2025-08-27 18:49:24] SUCCES: Alerte envoyÃÂ©e avec succÃÂ¨s
-[2025-08-27 18:49:24] ALERTE: Problemes dÃÂ©tectÃÂ©s - Alertes envoyÃÂ©es
-[2025-08-27 18:49:24] FIN: Surveillance terminÃÂ©e
-[2025-08-27 19:02:01] DEBUT: DÃÂ©marrage de la surveillance WordPress
-[2025-08-27 19:02:02] INFO: Site surveillÃÂ©: https://oupssecuretest.wordpress.com
-[2025-08-27 19:02:02] VERIFICATION: VÃÂ©rification de la disponibilitÃÂ© du site...
-[2025-08-27 19:02:05] SUCCES: Site accessible et rÃÂ©pond correctement
-[2025-08-27 19:02:05] VERIFICATION: VÃÂ©rification de l'intÃÂ©gritÃÂ© du contenu...
-[2025-08-27 19:02:08] MODIFICATION: Changement dÃÂ©tectÃÂ©: homepage
-[2025-08-27 19:02:13] MODIFICATION: Changement dÃÂ©tectÃÂ©: comments
-[2025-08-27 19:02:13] VERIFICATION: Recherche de patterns suspects...
-[2025-08-27 19:02:17] SUCCES: Aucun pattern suspect dÃÂ©tectÃÂ©
-[2025-08-27 19:02:21] SUCCES: Alerte envoyÃÂ©e avec succÃÂ¨s
-[2025-08-27 19:02:21] ALERTE: Problemes dÃÂ©tectÃÂ©s - Alertes envoyÃÂ©es
-[2025-08-27 19:02:21] FIN: Surveillance terminÃÂ©e
-[2025-08-27 19:41:41] Lancement de la sauvegarde...
-[2025-08-27 19:41:56] Lancement de la surveillance...
-[2025-08-27 19:41:56] === DÃÂMARRAGE DE LA SURVEILLANCE ===
-[2025-08-27 19:41:56] VÃÂ©rification de disponibilitÃÂ©...
-[2025-08-27 19:42:00] Site accessible.
-[2025-08-27 19:42:00] VÃÂ©rification d'intÃÂ©gritÃÂ©...
-[2025-08-27 19:42:07] Changement dÃÂ©tectÃÂ© : homepage
-[2025-08-27 19:42:14] Changement dÃÂ©tectÃÂ© : comments
-[2025-08-27 19:42:15] Recherche de patterns suspects...
-[2025-08-27 19:42:29] SUCCES: Alerte envoyÃÂ©e
-[2025-08-27 19:42:29] === FIN DE LA SURVEILLANCE ===
-[2025-08-29 02:12:07] === DÃ©but monitoring ===
-[2025-08-29 02:12:07] VÃ©rification site...
-[2025-08-29 02:17:20] Lancement sauvegarde...
-[2025-08-29 02:17:35] Lancement surveillance...
-[2025-08-29 02:17:35] === DÃÂMARRAGE SURVEILLANCE ===
-[2025-08-29 02:17:35] VÃÂ©rification de disponibilitÃÂ©...
-[2025-08-29 02:17:40] Site accessible 
-[2025-08-29 02:17:40] VÃÂ©rification d'intÃÂ©gritÃÂ©...
-[2025-08-29 02:17:49] Changement dÃÂ©tectÃÂ© : homepage 
-[2025-08-29 02:17:54] Changement dÃÂ©tectÃÂ© : comments 
-[2025-08-29 02:17:54] Recherche de patterns suspects...
-[2025-08-29 02:18:04] SUCCES: Alerte envoyÃÂ©e
-[2025-08-29 02:18:04] === FIN SURVEILLANCE ===
-[2025-08-29 04:04:05] Lancement sauvegarde...
-[2025-08-29 04:04:22] Lancement surveillance...
-[2025-08-29 04:04:22] === DÃÂMARRAGE SURVEILLANCE ===
-[2025-08-29 04:04:22] VÃÂ©rification de disponibilitÃÂ©...
-[2025-08-29 04:04:24] Site accessible 
-[2025-08-29 04:04:24] VÃÂ©rification d'intÃÂ©gritÃÂ©...
-[2025-08-29 04:04:26] Changement dÃÂ©tectÃÂ© : homepage 
-[2025-08-29 04:04:30] Changement dÃÂ©tectÃÂ© : comments 
-[2025-08-29 04:04:30] Recherche de patterns suspects...
-[2025-08-29 04:40:11] Lancement sauvegarde...
-[2025-08-29 04:40:20] Lancement surveillance...
-[2025-08-29 04:40:20] === DÃÂMARRAGE SURVEILLANCE ===
-[2025-08-29 04:40:20] VÃÂ©rification de disponibilitÃÂ©...
-[2025-08-29 04:40:24] Site accessible 
-[2025-08-29 04:40:24] VÃÂ©rification d'intÃÂ©gritÃÂ©...
-[2025-08-29 04:40:26] Changement dÃÂ©tectÃÂ© : homepage 
-[2025-08-29 04:40:36] Changement dÃÂ©tectÃÂ© : comments 
-[2025-08-29 04:40:36] Recherche de patterns suspects...
-[2025-08-29 04:40:50] SUCCES: Alerte envoyÃÂ©e
-[2025-08-29 04:40:50] === FIN SURVEILLANCE ===
-[2025-08-29 09:21:03] Lancement sauvegarde...
-[2025-08-29 09:21:03] Lancement surveillance...
-[2025-08-29 09:21:03] === DÃÂMARRAGE SURVEILLANCE ===
-[2025-08-29 09:21:03] VÃÂ©rification de disponibilitÃÂ©...
-[2025-08-29 09:21:03] ERREUR accÃÂ¨s site : HTTPSConnectionPool(host='oupssecuretest.wordpress.com', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x00000000044A3D90>: Failed to resolve 'oupssecuretest.wordpress.com' ([Errno 11001] getaddrinfo failed)"))
-[2025-08-29 09:21:03] VÃÂ©rification d'intÃÂ©gritÃÂ©...
-[2025-08-29 09:21:03] Erreur intÃÂ©gritÃÂ© homepage: HTTPSConnectionPool(host='oupssecuretest.wordpress.com', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x00000000044A2E90>: Failed to resolve 'oupssecuretest.wordpress.com' ([Errno 11001] getaddrinfo failed)"))
-[2025-08-29 09:21:03] Erreur intÃÂ©gritÃÂ© rss: HTTPSConnectionPool(host='oupssecuretest.wordpress.com', port=443): Max retries exceeded with url: /feed/ (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x00000000044A3390>: Failed to resolve 'oupssecuretest.wordpress.com' ([Errno 11001] getaddrinfo failed)"))
-[2025-08-29 09:21:03] Erreur intÃÂ©gritÃÂ© comments: HTTPSConnectionPool(host='oupssecuretest.wordpress.com', port=443): Max retries exceeded with url: /comments/feed/ (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000000004604410>: Failed to resolve 'oupssecuretest.wordpress.com' ([Errno 11001] getaddrinfo failed)"))
-[2025-08-29 09:21:03] Recherche de patterns suspects...
-[2025-08-29 09:21:03] Erreur pattern : HTTPSConnectionPool(host='oupssecuretest.wordpress.com', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000000004604550>: Failed to resolve 'oupssecuretest.wordpress.com' ([Errno 11001] getaddrinfo failed)"))
-[2025-08-29 09:21:03] ERREUR envoi alerte : [Errno 11001] getaddrinfo failed
-[2025-08-29 09:21:03] === FIN SURVEILLANCE ===
-[2025-09-04 11:36:25] Lancement sauvegarde...
-[2025-09-04 11:36:34] Lancement surveillance...
-[2025-09-04 11:36:35] === DÃÂMARRAGE SURVEILLANCE ===
-[2025-09-04 11:36:35] VÃÂ©rification de disponibilitÃÂ©...
-[2025-09-04 11:36:39] Site accessible 
-[2025-09-04 11:36:39] VÃÂ©rification d'intÃÂ©gritÃÂ©...
-[2025-09-04 11:36:41] Changement dÃÂ©tectÃÂ© : homepage 
-[2025-09-04 11:36:46] Changement dÃÂ©tectÃÂ© : comments 
-[2025-09-04 11:36:46] Recherche de patterns suspects...
-[2025-09-04 11:36:55] SUCCÃÂS: Alerte envoyÃÂ©e
-[2025-09-04 11:36:55] === FIN SURVEILLANCE ===
-[2025-09-04 14:13:41] [INFO] Lancement sauvegarde...
-[2025-09-04 14:13:56] [INFO] Lancement surveillance...
-[2025-09-04 14:13:56] [INFO] === DÃÂMARRAGE SURVEILLANCE ===
-[2025-09-04 14:13:56] [INFO] VÃÂ©rification de disponibilitÃÂ©...
-[2025-09-04 14:14:00] [INFO] Site accessible 
-[2025-09-04 14:14:00] [INFO] VÃÂ©rification d'intÃÂ©gritÃÂ©...
-[2025-09-04 14:14:03] [WARNING] Changement dÃÂ©tectÃÂ© : homepage 
-[2025-09-04 14:14:12] [WARNING] Changement dÃÂ©tectÃÂ© : comments 
-[2025-09-04 14:14:12] [INFO] Recherche de patterns suspects...
-[2025-09-04 14:14:20] [INFO] VÃÂ©rification du certificat SSL...
-[2025-09-04 14:14:27] [ERROR] ERREUR inattendue lors de la vÃÂ©rification SSL: can't subtract offset-naive and offset-aware datetimes
-[2025-09-04 14:14:43] [INFO] SUCCÃÂS: Alerte envoyÃÂ©e
-[2025-09-04 14:14:43] [INFO] Rapport sauvegardÃÂ©: monitor_data\report_20250904_141443.txt
-[2025-09-04 14:14:43] [INFO] === FIN SURVEILLANCE ===
-[2025-09-04 15:03:10] [INFO] Lancement sauvegarde...
-[2025-09-04 15:03:20] [INFO] Lancement surveillance...
-[2025-09-04 15:03:20] [INFO] === DÃÂMARRAGE SURVEILLANCE ===
-[2025-09-04 15:03:20] [INFO] VÃÂ©rification de disponibilitÃÂ©...
-[2025-09-04 15:03:23] [INFO] Site accessible 
-[2025-09-04 15:03:23] [INFO] VÃÂ©rification d'intÃÂ©gritÃÂ©...
-[2025-09-04 15:03:25] [WARNING] Changement dÃÂ©tectÃÂ© : homepage 
-[2025-09-04 15:03:31] [WARNING] Changement dÃÂ©tectÃÂ© : comments 
-[2025-09-04 15:03:31] [INFO] Recherche de patterns suspects...
-[2025-09-04 15:03:33] [INFO] VÃÂ©rification du certificat SSL...
-[2025-09-04 15:03:34] [ERROR] ERREUR inattendue lors de la vÃÂ©rification SSL: can't subtract offset-naive and offset-aware datetimes
-[2025-09-04 15:03:41] [INFO] SUCCÃÂS: Alerte envoyÃÂ©e
-[2025-09-04 15:03:41] [INFO] Rapport sauvegardÃÂ©: monitor_data\report_20250904_150341.txt
-[2025-09-04 15:03:41] [INFO] === FIN SURVEILLANCE ===
-[2025-09-04 15:03:41] [INFO] Lancement sauvegarde...
-[2025-09-04 15:04:11] [INFO] Lancement surveillance...
-[2025-09-04 15:04:11] [INFO] === DÃÂMARRAGE SURVEILLANCE ===
-[2025-09-04 15:04:11] [INFO] VÃÂ©rification de disponibilitÃÂ©...
-[2025-09-04 15:04:29] [INFO] Site accessible 
-[2025-09-04 15:04:29] [INFO] VÃÂ©rification d'intÃÂ©gritÃÂ©...
-[2025-09-04 15:05:18] [INFO] Recherche de patterns suspects...
-[2025-09-04 15:05:21] [INFO] VÃÂ©rification du certificat SSL...
-[2025-09-04 15:05:23] [INFO] Certificat SSL valide pour oupssecuretest.wordpress.com (expire dans 35 jours) Ã¢ÂÂ
-[2025-09-04 15:05:28] [INFO] SUCCÃÂS: Alerte envoyÃÂ©e
-[2025-09-04 15:05:28] [INFO] Rapport sauvegardÃÂ©: monitor_data\report_20250904_150528.txt
-[2025-09-04 15:05:28] [INFO] === FIN SURVEILLANCE ===
-[2025-09-04 15:17:59] [INFO] Lancement sauvegarde...
-[2025-09-04 15:18:20] [INFO] Lancement surveillance...
-[2025-09-04 15:18:20] [INFO] === DÃÂMARRAGE SURVEILLANCE ===
-[2025-09-04 15:18:20] [INFO] VÃÂ©rification de disponibilitÃÂ©...
-[2025-09-04 15:18:23] [INFO] Site accessible 
-[2025-09-04 15:18:23] [INFO] VÃÂ©rification d'intÃÂ©gritÃÂ©...
-[2025-09-04 15:18:28] [WARNING] Changement dÃÂ©tectÃÂ© : homepage 
-[2025-09-04 15:18:39] [INFO] Recherche de patterns suspects...
-[2025-09-04 15:18:44] [INFO] VÃÂ©rification du certificat SSL...
-[2025-09-04 15:18:46] [ERROR] ERREUR inattendue lors de la vÃÂ©rification SSL: can't subtract offset-naive and offset-aware datetimes
-[2025-09-04 15:18:56] [INFO] SUCCÃÂS: Alerte envoyÃÂ©e
-[2025-09-04 15:18:57] [INFO] Rapport sauvegardÃÂ©: monitor_data\report_20250904_151857.txt
-[2025-09-04 15:18:58] [INFO] === FIN SURVEILLANCE ===
-[2025-09-04 15:18:58] [INFO] Lancement sauvegarde...
-[2025-09-04 15:19:30] [INFO] Lancement surveillance...
-[2025-09-04 15:19:30] [INFO] === DÃÂMARRAGE SURVEILLANCE ===
-[2025-09-04 15:19:30] [INFO] VÃÂ©rification de disponibilitÃÂ©...
-[2025-09-04 15:19:38] [INFO] Site accessible 
-[2025-09-04 15:19:38] [INFO] VÃÂ©rification d'intÃÂ©gritÃÂ©...
-[2025-09-04 15:19:58] [INFO] Recherche de patterns suspects...
-[2025-09-04 15:20:02] [INFO] VÃÂ©rification du certificat SSL...
-[2025-09-04 15:20:03] [INFO] Certificat SSL valide pour oupssecuretest.wordpress.com (expire dans 35 jours) Ã¢ÂÂ
-[2025-09-04 15:20:13] [INFO] SUCCÃÂS: Alerte envoyÃÂ©e
-[2025-09-04 15:20:13] [INFO] Rapport sauvegardÃÂ©: monitor_data\report_20250904_152013.txt
-[2025-09-04 15:20:13] [INFO] === FIN SURVEILLANCE ===
-[2025-09-04 15:22:21] [INFO] Lancement sauvegarde...
-[2025-09-04 15:22:34] [INFO] Lancement surveillance...
-[2025-09-04 15:22:34] [INFO] === DÃÂMARRAGE SURVEILLANCE ===
-[2025-09-04 15:22:34] [INFO] VÃÂ©rification de disponibilitÃÂ©...
-[2025-09-04 15:22:39] [INFO] ArrÃÂªt demandÃÂ© par l'utilisateur
-[2025-09-04 15:22:42] [INFO] DÃÂ©marrage du service de surveillance planifiÃÂ©
-[2025-09-04 15:22:42] [INFO] === DÃÂMARRAGE SURVEILLANCE ===
-[2025-09-04 15:22:42] [INFO] VÃÂ©rification de disponibilitÃÂ©...
-[2025-09-04 15:22:47] [INFO] Site accessible 
-[2025-09-04 15:22:48] [INFO] VÃÂ©rification d'intÃÂ©gritÃÂ©...
-[2025-09-04 15:23:12] [INFO] Recherche de patterns suspects...
-[2025-09-04 15:23:16] [INFO] VÃÂ©rification du certificat SSL...
-[2025-09-04 15:23:18] [ERROR] ERREUR inattendue lors de la vÃÂ©rification SSL: can't subtract offset-naive and offset-aware datetimes
-[2025-09-04 15:23:24] [INFO] SUCCÃÂS: Alerte envoyÃÂ©e
-[2025-09-04 15:23:24] [INFO] Rapport sauvegardÃÂ©: monitor_data\report_20250904_152324.txt
-[2025-09-04 15:23:24] [INFO] === FIN SURVEILLANCE ===
-[2025-09-05 14:16:34,004] [INFO] Lancement sauvegarde...
-[2025-09-05 14:16:43,063] [INFO] Lancement surveillance...
-[2025-09-05 14:16:43,064] [INFO] === DÃMARRAGE SURVEILLANCE ===
-[2025-09-05 14:16:43,066] [INFO] VÃ©rification de disponibilitÃ©...
-[2025-09-05 14:16:45,300] [INFO] Site accessible 
-[2025-09-05 14:16:45,305] [INFO] VÃ©rification d'intÃ©gritÃ©...
-[2025-09-05 14:16:47,231] [INFO] RÃ©fÃ©rence crÃ©Ã©e : homepage
-[2025-09-05 14:16:49,203] [INFO] RÃ©fÃ©rence crÃ©Ã©e : rss
-[2025-09-05 14:16:51,301] [INFO] RÃ©fÃ©rence crÃ©Ã©e : comments
-[2025-09-05 14:16:51,308] [INFO] Recherche de patterns suspects...
-[2025-09-05 14:16:53,430] [INFO] VÃ©rification du certificat SSL...
-[2025-09-05 14:16:54,356] [INFO] Certificat valide (expire dans 34 jours) 
-[2025-09-05 14:17:01,298] [INFO] SUCCÃS: Alerte envoyÃ©e
-[2025-09-05 14:17:01,301] [INFO] Rapport sauvegardÃ©: monitor_data\report_20250905_141701.txt
-[2025-09-05 14:17:01,302] [INFO] === FIN SURVEILLANCE ===
