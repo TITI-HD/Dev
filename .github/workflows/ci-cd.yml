@@ -1,13 +1,13 @@
-name: WordPress CI/CD - Monitoring & Backup
+name: WordPress CI/CD - Full Monitoring
 
 on:
   push:
     branches: ["main"]
   pull_request:
   schedule:
-    - cron: '0 */3 * * *'   # Surveillance toutes les 3h
-    - cron: '0 8 * * *'     # Rapport quotidien à 08:00
-  workflow_dispatch:        # Permet lancement manuel
+    - cron: '0 */3 * * *'   # Monitoring toutes les 3h
+    - cron: '0 8 * * *'     # Rapport quotidien à 08h00
+  workflow_dispatch:        # Lancement manuel possible
 
 env:
   SITE_URL: "https://oupssecuretest.wordpress.com"
@@ -21,115 +21,43 @@ env:
   MONITOR_DIR: "monitor_data"
 
 jobs:
-  setup:
+  monitoring:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Create directories
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Installer dépendances
         run: |
-          mkdir -p $BACKUP_DIR
-          mkdir -p $RESTORE_DIR
-          mkdir -p $MONITOR_DIR
-          mkdir -p workflow-logs
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt || pip install requests schedule python-dateutil
 
-  wordpress-monitoring:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Install dependencies
+      - name: Lancer monitoring (exécution unique)
         run: |
-          pip install requests schedule python-dateutil
-
-      - name: Run monitoring script
-        run: |
-          if [ ! -f "monitor.py" ]; then
-            echo "ERREUR: monitor.py n'existe pas"
-            exit 1
-          fi
-
           python monitor.py --once
 
-          if [ $? -eq 0 ]; then
-            echo "<li style='color:green;'>Monitoring OK</li>" >> workflow-logs/logs.html
+      - name: Préparer dossier logs
+        run: mkdir -p workflow-logs
+
+      - name: Écrire résultat OK/ERREUR
+        run: |
+          if [ -f "monitor_data/logs.html" ]; then
+            echo "<li style='color:green;'>Monitoring terminé avec succès</li>" >> workflow-logs/logs.html
           else
             echo "<li style='color:red;'>ERREUR Monitoring</li>" >> workflow-logs/logs.html
             exit 1
           fi
 
-  wordpress-backup-only:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Install dependencies
-        run: |
-          pip install requests schedule python-dateutil
-
-      - name: Run backup only
-        run: |
-          python monitor.py --backup
-
-          if [ $? -eq 0 ]; then
-            echo "<li style='color:green;'>Backup OK</li>" >> workflow-logs/logs.html
-          else
-            echo "<li style='color:red;'>ERREUR Backup</li>" >> workflow-logs/logs.html
-            exit 1
-          fi
-
-      - name: Upload vers GitHub Artifacts
-        uses: actions/upload-artifact@v3
+      - name: Upload artefacts de monitoring
+        uses: actions/upload-artifact@v4
         with:
-          name: sauvegarde-wordpress
-          path: backups/
-
-  wordpress-restore:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Install dependencies
-        run: |
-          pip install requests schedule python-dateutil
-
-      - name: Find latest backup
-        id: find-backup
-        run: |
-          latest_backup=$(ls -t $BACKUP_DIR/*.zip 2>/dev/null | head -n1 || echo "")
-          if [ -z "$latest_backup" ]; then
-            echo "Aucune sauvegarde trouvée"
-            exit 1
-          fi
-          echo "backup-file=$latest_backup" >> $GITHUB_OUTPUT
-
-      - name: Restore from backup
-        run: |
-          python monitor.py --restore "${{ steps.find-backup.outputs.backup-file }}"
-          if [ $? -eq 0 ]; then
-            echo "<li style='color:green;'>Restauration OK</li>" >> workflow-logs/logs.html
-          else
-            echo "<li style='color:red;'>ERREUR Restauration</li>" >> workflow-logs/logs.html
-            exit 1
-          fi
-
-  daily-report:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' && github.event.schedule == '0 8 * * *'
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Install dependencies
-        run: |
-          pip install requests schedule python-dateutil
-
-      - name: Generate daily report
-        run: |
-          python monitor.py --report
-          echo "<li style='color:green;'>Rapport quotidien généré</li>" >> workflow-logs/logs.html
+          name: monitoring-logs
+          path: |
+            monitor_data/
+            workflow-logs/

@@ -4,7 +4,7 @@ WordPress Monitoring & Backup & Restore & Report - Tout-en-un
 - Surveillance: disponibilité, intégrité, patterns suspects, SSL
 - Backup: sauvegarde du site WordPress
 - Restore: restauration des fichiers avec vérification
-- Reporting: rapports détaillés + historique incidents
+- Reporting: rapports détaillés + historique incidents (TXT + HTML)
 - Planification: exécution planifiée avec nettoyage des logs
 - Option --once pour exécution unique
 - Option --test pour tests unitaires
@@ -26,7 +26,7 @@ import argparse
 from logging.handlers import RotatingFileHandler
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone   # <-- ajout timezone
 from pathlib import Path
 from typing import Dict, List
 from dateutil import parser, tz
@@ -260,7 +260,8 @@ def check_ssl_cert() -> Dict:
             s.connect((hostname, 443))
             cert = s.getpeercert()
             expire_date = datetime.strptime(cert['notAfter'], "%b %d %H:%M:%S %Y %Z")
-            delta = (expire_date - datetime.utcnow()).days
+            # 🔧 Correction ici :
+            delta = (expire_date - datetime.now(timezone.utc)).days
             results['valid'] = delta > 0
             results['days_left'] = delta
             if delta < 30:
@@ -297,6 +298,7 @@ def restore_site(backup_file: Path):
 # === Reporting ===
 def generate_report() -> str:
     history = incident_manager.load_incidents()
+    # Rapport texte
     report = ["WordPress Monitoring Report", "============================", f"Total incidents: {len(history)}\n"]
     for inc in history[-20:]:
         ts = inc["timestamp"]
@@ -307,6 +309,25 @@ def generate_report() -> str:
     report_file = config.MONITOR_DIR / f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
     report_file.write_text(report_str, encoding='utf-8')
     log(f"Rapport généré -> {report_file}")
+
+    # 🔧 Nouveau rapport HTML
+    html_lines = [
+        "<html><head><meta charset='utf-8'><title>WP Monitoring Report</title></head><body>",
+        "<h2>Rapport de Monitoring WordPress</h2>",
+        f"<p>Total incidents: {len(history)}</p>",
+        "<ul>"
+    ]
+    for inc in history[-20:]:
+        ts = inc["timestamp"]
+        typ = inc["type"]
+        sev = inc["severity"]
+        html_lines.append(f"<li><b>{ts}</b> [{sev}] <u>{typ}</u> - {inc['details']}</li>")
+    html_lines.append("</ul></body></html>")
+    html_str = "\n".join(html_lines)
+    html_file = config.MONITOR_DIR / "logs.html"
+    html_file.write_text(html_str, encoding="utf-8")
+    log(f"Rapport HTML généré -> {html_file}")
+
     return report_str
 
 # === Nettoyage ancien logs ===
@@ -329,9 +350,8 @@ def main():
     args = parser.parse_args()
 
     if args.test:
-        # Exécuter tests unitaires
         print("Exécution des tests unitaires...")
-        # Ajouter vos tests unitaires ici
+        # Tests simples ici
     elif args.once:
         run_all()
     elif args.backup:
