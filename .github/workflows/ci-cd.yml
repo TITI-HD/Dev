@@ -5,7 +5,7 @@ on:
     branches: ["main"]
   pull_request:
   schedule:
-    - cron: '0 */2 * * *'   # Monitoring toutes les 2h
+    - cron: '0 */3 * * *'   # Monitoring toutes les 3h
     - cron: '30 8 * * *'    # Rapport quotidien à 08h30
   workflow_dispatch:        # Lancement manuel possible
 
@@ -13,12 +13,14 @@ env:
   SITE_URL: "https://oupssecuretest.wordpress.com"
   BACKUP_DIR: "backups"
   RESTORE_DIR: "restored"
+  MONITOR_DIR: "monitor_data"
   ALERT_EMAIL: "danieltiti882@gmail.com"
   SMTP_SERVER: "smtp.gmail.com"
   SMTP_PORT: 587
   SMTP_USER: "danieltiti882@gmail.com"
   SMTP_PASS: ${{ secrets.SMTP_PASS }}
-  MONITOR_DIR: "monitor_data"
+  LOG_RETENTION_DAYS: 30
+  CHECK_INTERVAL_HOURS: 3
 
 jobs:
   monitoring:
@@ -36,25 +38,35 @@ jobs:
       - name: Installer dépendances
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt || pip install requests schedule python-dateutil
+          pip install -r requirements.txt || pip install requests schedule python-dateutil python-dotenv
 
       - name: Lancer monitoring (exécution unique)
+        id: run_monitor
         run: |
           python monitor.py --once
 
-      - name: Préparer dossier logs
-        run: mkdir -p workflow-logs
-
-      - name: Écrire résultat OK/ERREUR
+      - name: Vérifier génération des rapports
         run: |
-          if [ -f "monitor_data/logs.html" ]; then
-            echo "<li style='color:green;'>Monitoring terminé avec succès</li>" >> workflow-logs/logs.html
+          mkdir -p workflow-logs
+          shopt -s nullglob
+          txt_files=(monitor_data/report_*.txt)
+          html_files=(monitor_data/report_*.html)
+          
+          if (( ${#txt_files[@]} )); then
+              echo "<li style='color:green;'>Rapport TXT généré avec succès</li>" >> workflow-logs/logs.html
           else
-            echo "<li style='color:red;'>ERREUR Monitoring</li>" >> workflow-logs/logs.html
-            exit 1
+              echo "<li style='color:red;'>ERREUR génération rapport TXT</li>" >> workflow-logs/logs.html
+              exit 1
           fi
 
-      - name: Upload artefacts de monitoring
+          if (( ${#html_files[@]} )); then
+              echo "<li style='color:green;'>Rapport HTML généré avec succès</li>" >> workflow-logs/logs.html
+          else
+              echo "<li style='color:red;'>ERREUR génération rapport HTML</li>" >> workflow-logs/logs.html
+              exit 1
+          fi
+
+      - name: Upload artefacts
         uses: actions/upload-artifact@v4
         with:
           name: monitoring-logs
@@ -62,68 +74,36 @@ jobs:
             monitor_data/
             workflow-logs/
 
-      - name: Notify on failure
-        if: failure()
+      - name: Envoyer email de notification
+        if: always()
         run: |
-          echo "Monitoring failed. Sending notification..."
-          # Ajoutez ici le code pour envoyer une notification par email ou autre moyen
+          python - << 'EOF'
+          import os, smtplib
+          from email.mime.text import MIMEText
+          from pathlib import Path
 
-      - name: Notify on success
-        if: success()
-        run: |
-          echo "Monitoring succeeded. Sending notification..."
-          # Ajoutez ici le code pour envoyer une notification par email ou autre moyen
+          monitor_dir = Path(os.environ["MONITOR_DIR"])
+          html_files = sorted(monitor_dir.glob("report_*.html"), reverse=True)
+          if not html_files:
+              print("Aucun rapport HTML à envoyer")
+              exit(1)
+          latest_html = html_files[0]
+          with latest_html.open("r", encoding="utf-8") as f:
+              content = f.read()
 
-  daily-report:
-    runs-on: ubuntu-latest
-    if: github.event.schedule == '30 8 * * *'
+          msg = MIMEText(content, "html")
+          msg["Subject"] = f"WordPress Monitoring Report - {os.environ['SITE_URL']}"
+          msg["From"] = os.environ["SMTP_USER"]
+          msg["To"] = os.environ["ALERT_EMAIL"]
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-
-      - name: Installer dépendances
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt || pip install requests schedule python-dateutil
-
-      - name: Générer rapport quotidien
-        run: |
-          python monitor.py --report
-
-      - name: Préparer dossier logs
-        run: mkdir -p workflow-logs
-
-      - name: Écrire résultat OK/ERREUR
-        run: |
-          if [ -f "monitor_data/report_*.txt" ]; then
-            echo "<li style='color:green;'>Rapport quotidien généré avec succès</li>" >> workflow-logs/logs.html
-          else
-            echo "<li style='color:red;'>ERREUR Génération rapport quotidien</li>" >> workflow-logs/logs.html
-            exit 1
-          fi
-
-      - name: Upload artefacts de rapport quotidien
-        uses: actions/upload-artifact@v4
-        with:
-          name: daily-report-logs
-          path: |
-            monitor_data/
-            workflow-logs/
-
-      - name: Notify on failure
-        if: failure()
-        run: |
-          echo "Daily report generation failed. Sending notification..."
-          # Ajoutez ici le code pour envoyer une notification par email ou autre moyen
-
-      - name: Notify on success
-        if: success()
-        run: |
-          echo "Daily report generated successfully. Sending notification..."
-          # Ajoutez ici le code pour envoyer une notification par email ou autre moyen
+          try:
+              server = smtplib.SMTP(os.environ["SMTP_SERVER"], int(os.environ["SMTP_PORT"]))
+              server.starttls()
+              server.login(os.environ["SMTP_USER"], os.environ["SMTP_PASS"])
+              server.sendmail(os.environ["SMTP_USER"], os.environ["ALERT_EMAIL"], msg.as_string())
+              server.quit()
+              print(f"Email envoyé à {os.environ['ALERT_EMAIL']}")
+          except Exception as e:
+              print(f"Erreur envoi email: {e}")
+              exit(1)
+          EOF
