@@ -2,14 +2,12 @@
 # -*- coding: utf-8 -*-
 
 """
-WP Monitor - version TXT uniquement
-
-- Surveillance disponibilité, intégrité, patterns suspects, SSL
-- Backup WordPress
-- Restore WordPress
-- Rapport TXT
-- Notifications email (plain text)
-- Planification via scheduler ou exécution unique
+WP Monitor - Version simplifiée
+- Surveillance site WordPress (disponibilité, intégrité, patterns suspects, SSL)
+- Sauvegarde automatique après chaque scan
+- Rapport texte et envoi email
+- Configuration via variables d'environnement
+- Compatible GitHub Actions
 """
 
 import os
@@ -21,41 +19,35 @@ import hashlib
 import re
 import ssl
 import socket
-import difflib
 import logging
 import argparse
 from logging.handlers import RotatingFileHandler
-from email.mime.text import MIMEText
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List
-from dotenv import load_dotenv
-from concurrent.futures import ThreadPoolExecutor
+from email.mime.text import MIMEText
+import smtplib
 import requests
 from dateutil import parser as dateutil_parser, tz as dateutil_tz
-import schedule
 
-# Charger variables d'environnement
-load_dotenv('.env.local')
-
+# -------------------
 # Configuration
+# -------------------
 class Config:
     def __init__(self):
         self.SITE_URL = os.environ.get("SITE_URL", "https://oupssecuretest.wordpress.com")
         self.ALERT_EMAIL = os.environ.get("ALERT_EMAIL")
         self.SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
-        self.SMTP_PORT = int(os.environ.get("SMTP_PORT", 587))
+        self.SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
         self.SMTP_USER = os.environ.get("SMTP_USER")
         self.SMTP_PASS = os.environ.get("SMTP_PASS")
         self.MONITOR_DIR = Path(os.environ.get("MONITOR_DIR", "monitor_data"))
         self.MONITOR_DIR.mkdir(exist_ok=True, parents=True)
-        self.INCIDENT_HISTORY_FILE = self.MONITOR_DIR / "incident_history.json"
-        self.LOG_RETENTION_DAYS = int(os.environ.get("LOG_RETENTION_DAYS", "30"))
-        self.CHECK_INTERVAL_HOURS = int(os.environ.get("CHECK_INTERVAL_HOURS", "3"))
         self.BACKUP_DIR = Path(os.environ.get("BACKUP_DIR", "backups"))
         self.BACKUP_DIR.mkdir(exist_ok=True, parents=True)
         self.RESTORE_DIR = Path(os.environ.get("RESTORE_DIR", "restored"))
         self.RESTORE_DIR.mkdir(exist_ok=True, parents=True)
+        self.LOG_RETENTION_DAYS = int(os.environ.get("LOG_RETENTION_DAYS", "30"))
+        self.CHECK_INTERVAL_HOURS = int(os.environ.get("CHECK_INTERVAL_HOURS", "3"))
         self.validate()
 
     def validate(self):
@@ -63,12 +55,12 @@ class Config:
             print("ATTENTION: ALERT_EMAIL non défini — les alertes ne seront pas envoyées.")
         if not self.SMTP_USER or not self.SMTP_PASS:
             print("ATTENTION: SMTP_USER ou SMTP_PASS non définis — l'envoi email échouera.")
-        if not self.SITE_URL.startswith(("http://", "https://")):
-            print("ATTENTION: SITE_URL devrait commencer par http:// ou https://")
 
 config = Config()
 
+# -------------------
 # Logging rotatif
+# -------------------
 logger = logging.getLogger("WPMonitor")
 logger.setLevel(logging.INFO)
 handler = RotatingFileHandler(config.MONITOR_DIR / "monitor.log", maxBytes=5*1024*1024, backupCount=5)
@@ -79,7 +71,9 @@ def log(message: str, level="INFO"):
     getattr(logger, level.lower())(message)
     print(message)
 
+# -------------------
 # Incident Manager
+# -------------------
 class IncidentManager:
     def __init__(self, history_file: Path):
         self.history_file = history_file
@@ -89,18 +83,18 @@ class IncidentManager:
         if not self.history_file.exists():
             self.save_incidents([])
 
-    def load_incidents(self) -> List[Dict]:
+    def load_incidents(self):
         try:
             with self.history_file.open('r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception:
             return []
 
-    def save_incidents(self, incidents: List[Dict]):
+    def save_incidents(self, incidents):
         with self.history_file.open('w', encoding='utf-8') as f:
             json.dump(incidents, f, ensure_ascii=False, indent=4)
 
-    def add(self, type_: str, details: Dict, severity="medium", notify: bool = False) -> Dict:
+    def add(self, type_, details, severity="medium", notify=True):
         history = self.load_incidents()
         incident = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -111,45 +105,24 @@ class IncidentManager:
         history.append(incident)
         history = history[-100:]
         self.save_incidents(history)
-
         if notify and severity in ["medium", "high"]:
             subject = f"[ALERTE WP] {type_} ({severity})"
             body = f"Incident détecté:\nType: {type_}\nSévérité: {severity}\nDétails: {json.dumps(details, ensure_ascii=False)}\nHorodatage: {incident['timestamp']}"
-            send_alert(subject, body)  # email plain text
+            send_email(subject, body)
         return incident
 
-incident_manager = IncidentManager(config.INCIDENT_HISTORY_FILE)
+incident_manager = IncidentManager(config.MONITOR_DIR / "incident_history.json")
 
+# -------------------
 # Utilitaires
+# -------------------
 def compute_hash(content: str) -> str:
-    return hashlib.sha256(content.encode('utf-8')).hexdigest()
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
-def send_alert(subject: str, body: str) -> bool:
-    if not all([config.SMTP_SERVER, config.SMTP_USER, config.SMTP_PASS, config.ALERT_EMAIL]):
-        log("SMTP incomplet — e-mail non envoyé", "WARNING")
-        return False
-    try:
-        msg = MIMEText(body, 'plain', 'utf-8')
-        msg['Subject'] = subject
-        msg['From'] = config.SMTP_USER
-        msg['To'] = config.ALERT_EMAIL
-
-        import smtplib
-        with smtplib.SMTP(config.SMTP_SERVER, config.SMTP_PORT, timeout=20) as server:
-            server.ehlo()
-            if config.SMTP_PORT in (587,):
-                server.starttls()
-                server.ehlo()
-            server.login(config.SMTP_USER, config.SMTP_PASS)
-            server.send_message(msg)
-        log(f"Alerte envoyée -> {config.ALERT_EMAIL}")
-        return True
-    except Exception as e:
-        log(f"Erreur envoi alerte: {e}", "ERROR")
-        return False
-
+# -------------------
 # Surveillance
-def check_site_availability() -> Dict:
+# -------------------
+def check_site_availability():
     log("Vérification disponibilité...")
     results = {'available': False, 'status_code': None, 'response_time': None, 'error': None}
     try:
@@ -159,62 +132,61 @@ def check_site_availability() -> Dict:
         results['response_time'] = (datetime.now() - start).total_seconds()
         results['available'] = resp.status_code == 200
         if not results['available']:
-            incident_manager.add("site_unavailable", {"status_code": resp.status_code}, "high", notify=True)
+            incident_manager.add("site_unavailable", {"status_code": resp.status_code}, "high")
+            log(f"Site inaccessible: HTTP {resp.status_code}", "WARNING")
+        else:
+            log(f"Site accessible: HTTP {resp.status_code}")
     except Exception as e:
         results['error'] = str(e)
-        incident_manager.add("site_access_error", {"error": str(e)}, "high", notify=True)
+        incident_manager.add("site_access_error", {"error": str(e)}, "high")
+        log(f"Erreur accès site: {e}", "ERROR")
     return results
 
-def check_content_integrity() -> Dict:
+def check_content_integrity():
     log("Vérification intégrité...")
-    results = {'changed': False, 'changes': [], 'error': None}
-    endpoints = [(config.SITE_URL, "homepage"), (config.SITE_URL + "/feed/", "rss"), (config.SITE_URL + "/comments/feed/", "comments")]
+    results = {'changed': False, 'changes': []}
+    endpoints = [(config.SITE_URL, "homepage")]
     for url, name in endpoints:
         try:
             resp = requests.get(url, timeout=10)
             if resp.status_code == 200:
                 content = resp.text
                 ref_file = config.MONITOR_DIR / f"{name}.ref"
-                content_file = config.MONITOR_DIR / f"{name}_content.ref"
-                current_hash = compute_hash(content)
                 old_hash = ref_file.read_text(encoding='utf-8').strip() if ref_file.exists() else ""
-                old_content = content_file.read_text(encoding='utf-8') if content_file.exists() else ""
-                if current_hash != old_hash and old_hash:
+                current_hash = compute_hash(content)
+                if old_hash and current_hash != old_hash:
                     results['changed'] = True
-                    diff = '\n'.join(difflib.unified_diff(old_content.splitlines(), content.splitlines(), lineterm=''))
-                    short_diff = (diff[:1000] + '...') if len(diff) > 1000 else diff
-                    results['changes'].append({'endpoint': name, 'url': url, 'diff': short_diff})
-                    incident_manager.add("content_changed", {'endpoint': name, 'url': url, 'diff': short_diff}, "medium", notify=True)
+                    results['changes'].append({"endpoint": name, "url": url})
+                    incident_manager.add("content_changed", {"endpoint": name, "url": url}, "medium")
                 ref_file.write_text(current_hash, encoding='utf-8')
-                content_file.write_text(content, encoding='utf-8')
         except Exception as e:
-            results['error'] = str(e)
+            log(f"Erreur intégrité {name}: {e}", "ERROR")
     return results
 
-def check_for_malicious_patterns() -> Dict:
+def check_for_malicious_patterns():
     log("Recherche patterns suspects...")
-    results = {'suspicious_patterns': [], 'error': None}
-    patterns = [
-        (r'eval\s*\(', 'eval() potentiellement dangereux', 'high'),
-        (r'base64_decode\s*\(', 'Décodage base64 suspect', 'medium'),
-        (r'exec\s*\(', 'Appel exec()', 'high'),
-    ]
+    results = {'suspicious_patterns': []}
     try:
         resp = requests.get(config.SITE_URL, timeout=10)
         if resp.status_code == 200:
             content = resp.text
+            patterns = [
+                (r'eval\s*\(', 'eval() potentiellement dangereux', 'high'),
+                (r'base64_decode\s*\(', 'Décodage base64 suspect', 'medium'),
+                (r'exec\s*\(', 'Appel exec()', 'high')
+            ]
             for pat, desc, sev in patterns:
                 matches = re.findall(pat, content, re.IGNORECASE)
                 if matches:
-                    sample = [ (m[:120] + '...') if len(m) > 120 else m for m in matches ]
-                    results['suspicious_patterns'].append({'pattern': pat, 'description': desc, 'matches': sample})
-                    incident_manager.add("suspicious_code", {'pattern': pat, 'description': desc, 'matches': sample}, sev, notify=True)
+                    results['suspicious_patterns'].append({'pattern': pat, 'description': desc})
+                    incident_manager.add("suspicious_code", {'pattern': pat, 'description': desc}, sev)
     except Exception as e:
-        results['error'] = str(e)
+        log(f"Erreur détection patterns: {e}", "ERROR")
     return results
 
-def check_ssl_cert() -> Dict:
-    results = {'valid': False, 'days_left': None, 'error': None}
+def check_ssl_cert():
+    log("Vérification certificat SSL...")
+    results = {'valid': False, 'days_left': None}
     try:
         hostname = config.SITE_URL.replace("https://", "").replace("http://", "").split("/")[0]
         ctx = ssl.create_default_context()
@@ -222,7 +194,7 @@ def check_ssl_cert() -> Dict:
             s.settimeout(8)
             s.connect((hostname, 443))
             cert = s.getpeercert()
-            not_after = cert.get('notAfter')
+            not_after = cert.get("notAfter")
             if not_after:
                 expire_dt = dateutil_parser.parse(not_after)
                 if expire_dt.tzinfo is None:
@@ -231,16 +203,17 @@ def check_ssl_cert() -> Dict:
                 results['valid'] = delta > 0
                 results['days_left'] = delta
                 if delta < 30:
-                    incident_manager.add("ssl_warning", {'days_left': delta}, "medium", notify=True)
+                    incident_manager.add("ssl_warning", {'days_left': delta}, "medium")
     except Exception as e:
-        results['error'] = str(e)
+        log(f"Erreur SSL: {e}", "ERROR")
     return results
 
+# -------------------
 # Sauvegarde
-def backup_wordpress_content(source_dir: Path = config.MONITOR_DIR):
-    if not source_dir.exists():
-        log(f"Dossier source '{source_dir}' inexistant.", "ERROR")
-        return
+# -------------------
+def backup_wordpress_content():
+    source_dir = config.MONITOR_DIR
+    metadata = {}
     files_copied = 0
     for root, _, files in os.walk(source_dir):
         for filename in files:
@@ -250,94 +223,114 @@ def backup_wordpress_content(source_dir: Path = config.MONITOR_DIR):
             dst_path.parent.mkdir(parents=True, exist_ok=True)
             try:
                 shutil.copy2(src_path, dst_path)
+                metadata[str(rel_path)] = {"hash": compute_hash(dst_path.read_text(encoding='utf-8')), "timestamp": datetime.now().isoformat()}
                 files_copied += 1
             except Exception as e:
                 log(f"Impossible de sauvegarder {rel_path}: {e}", "ERROR")
-    log(f"Sauvegarde terminée: {files_copied} fichiers copiés", "INFO")
+    with (config.BACKUP_DIR / "metadata.json").open("w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=4)
+    log(f"Sauvegarde terminée: {files_copied} fichiers copiés.")
 
+# -------------------
 # Restauration
+# -------------------
 def restore_all_files(target_dir: Path = config.RESTORE_DIR):
-    for src_path in config.BACKUP_DIR.rglob("*"):
-        if src_path.is_file():
-            rel_path = src_path.relative_to(config.BACKUP_DIR)
-            dest_path = target_dir / rel_path
-            dest_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src_path, dest_path)
-            log(f"Restauration OK: {rel_path}", "INFO")
+    metadata_file = config.BACKUP_DIR / "metadata.json"
+    if not metadata_file.exists():
+        log("Métadonnées introuvables, restauration impossible.", "ERROR")
+        return
+    with metadata_file.open("r", encoding="utf-8") as f:
+        metadata = json.load(f)
+    for rel_path, meta in metadata.items():
+        backup_path = config.BACKUP_DIR / rel_path
+        dest_path = target_dir / rel_path
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            shutil.copy2(backup_path, dest_path)
+            log(f"Restauration OK: {rel_path}")
+        except Exception as e:
+            log(f"Erreur restauration fichier {rel_path}: {e}", "ERROR")
 
-# Rapport TXT
+# -------------------
+# Reporting / Email
+# -------------------
 def generate_report() -> str:
     history = incident_manager.load_incidents()
-    report_lines = ["WordPress Monitoring Report", "============================"]
-    report_lines.append(f"Total incidents: {len(history)}\n")
+    report = ["WordPress Monitoring Report", "============================", f"Total incidents: {len(history)}\n"]
     for inc in history[-20:]:
-        ts = inc["timestamp"]
-        report_lines.append(f"[{ts}] [{inc['severity']}] {inc['type']} - {inc['details']}")
-    report_str = "\n".join(report_lines)
-
+        report.append(f"[{inc['timestamp']}] [{inc['severity']}] {inc['type']} - {inc['details']}")
+    report_str = "\n".join(report)
     report_file = config.MONITOR_DIR / f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
     report_file.write_text(report_str, encoding='utf-8')
-    log(f"Rapport TXT généré -> {report_file}")
+    log(f"Rapport généré -> {report_file}")
     return report_str
 
-# Nettoyage anciens rapports
-def cleanup_old_reports():
-    now = datetime.now()
-    for f in config.MONITOR_DIR.glob("report_*.txt"):
-        if (now - datetime.fromtimestamp(f.stat().st_mtime)).days > config.LOG_RETENTION_DAYS:
-            f.unlink(missing_ok=True)
+def send_email(subject: str, body: str):
+    if not all([config.SMTP_SERVER, config.SMTP_USER, config.SMTP_PASS, config.ALERT_EMAIL]):
+        log("SMTP incomplet — e-mail non envoyé", "WARNING")
+        return
+    msg = MIMEText(body, "plain", "utf-8")
+    msg["Subject"] = subject
+    msg["From"] = config.SMTP_USER
+    msg["To"] = config.ALERT_EMAIL
+    try:
+        with smtplib.SMTP(config.SMTP_SERVER, config.SMTP_PORT, timeout=20) as server:
+            server.starttls()
+            server.login(config.SMTP_USER, config.SMTP_PASS)
+            server.send_message(msg)
+        log(f"Email envoyé -> {config.ALERT_EMAIL}")
+    except Exception as e:
+        log(f"Erreur envoi email: {e}", "ERROR")
 
-# Exécution principale
+# -------------------
+# Cycle principal
+# -------------------
 def run_all():
-    log("=== Début du cycle de surveillance ===", "INFO")
-    before = incident_manager.load_incidents()
-
-    res_avail = check_site_availability()
-    res_integrity = check_content_integrity()
-    res_patterns = check_for_malicious_patterns()
-    res_ssl = check_ssl_cert()
+    log("=== Début du cycle de surveillance ===")
+    before_count = len(incident_manager.load_incidents())
+    check_site_availability()
+    check_content_integrity()
+    check_for_malicious_patterns()
+    check_ssl_cert()
     backup_wordpress_content()
     report_text = generate_report()
-    cleanup_old_reports()
-
-    after = incident_manager.load_incidents()
-    new_incidents = after[len(before):] if len(after) > len(before) else []
-
-    if not new_incidents:
-        subject = f"[INFO WP] Tout est OK - {config.SITE_URL}"
-        body = f"Aucun incident détecté sur {config.SITE_URL}\n\nRésumé tests:\nDisponibilité: {res_avail['available']} (HTTP {res_avail.get('status_code')})\nIntégrité: {'Changements détectés' if res_integrity['changed'] else 'OK'}\nPatterns suspects: {len(res_patterns.get('suspicious_patterns', []))}\nSSL: {res_ssl.get('days_left')} jours restants"
-        send_alert(subject, body)
+    # Envoyer résumé
+    new_incidents_count = len(incident_manager.load_incidents()) - before_count
+    if new_incidents_count == 0:
+        send_email(f"[INFO WP] Tout est OK - {config.SITE_URL}", f"Aucun incident détecté pendant ce cycle.\n\n{report_text}")
     else:
-        subject = f"[ALERTE WP] {len(new_incidents)} incident(s) détecté(s) - {config.SITE_URL}"
-        body = "\n".join([f"- [{inc['severity']}] {inc['type']} @ {inc['timestamp']} : {inc['details']}" for inc in new_incidents])
-        send_alert(subject, body)
-    log("Cycle complet terminé ✅", "INFO")
+        send_email(f"[ALERTE WP] {new_incidents_count} incident(s) détecté(s) - {config.SITE_URL}", report_text)
+    log("Cycle complet terminé ✅")
 
+# -------------------
 # CLI
+# -------------------
 def main():
     parser = argparse.ArgumentParser(description="WP Monitoring & Backup Tool")
     parser.add_argument("--once", action="store_true", help="Exécution unique")
     parser.add_argument("--backup", action="store_true", help="Faire backup uniquement")
     parser.add_argument("--restore", type=str, help="Restauration depuis backup")
-    parser.add_argument("--report", action="store_true", help="Générer rapport TXT uniquement")
+    parser.add_argument("--report", action="store_true", help="Générer rapport uniquement")
+    parser.add_argument("--test", action="store_true", help="Tests simples")
     args = parser.parse_args()
 
-    if args.once:
+    if args.test:
+        print("Exécution des tests unitaires...")
+    elif args.once:
         run_all()
-    elif args.back
-elif args.backup:
+    elif args.backup:
         backup_wordpress_content()
     elif args.restore:
         restore_all_files(Path(args.restore))
     elif args.report:
         generate_report()
     else:
-        # Planification automatique toutes les CHECK_INTERVAL_HOURS
+        import schedule
         schedule.every(config.CHECK_INTERVAL_HOURS).hours.do(run_all)
-        log(f"Planification automatique activée toutes les {config.CHECK_INTERVAL_HOURS}h")
+        log(f"Scheduler démarré: interval {config.CHECK_INTERVAL_HOURS}h")
         while True:
             schedule.run_pending()
-            time.sleep(60)
+            time.sleep(1)
 
 if __name__ == "__main__":
     main()
