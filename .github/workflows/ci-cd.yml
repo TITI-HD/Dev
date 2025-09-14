@@ -1,4 +1,4 @@
-name: WordPress CI/CD - Monitoring & Backup
+name: WordPress CI/CD - Monitoring & Backup & Report
 
 on:
   push:
@@ -7,13 +7,13 @@ on:
   schedule:
     - cron: '0 */3 * * *'   # Monitoring toutes les 3h
     - cron: '0 8 * * *'     # Rapport quotidien à 08h00
-  workflow_dispatch:
+  workflow_dispatch:        # Lancement manuel possible
 
 env:
   SITE_URL: "https://oupssecuretest.wordpress.com"
+  MONITOR_DIR: "monitor_data"
   BACKUP_DIR: "backups"
   RESTORE_DIR: "restored"
-  MONITOR_DIR: "monitor_data"
   ALERT_EMAIL: "danieltiti882@gmail.com"
   SMTP_SERVER: "smtp.gmail.com"
   SMTP_PORT: 587
@@ -23,34 +23,67 @@ env:
   CHECK_INTERVAL_HOURS: 3
 
 jobs:
-  monitoring:
+  monitor-and-report:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
 
-      - name: Installer dépendances
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt || pip install requests schedule python-dateutil
+          pip install requests schedule python-dateutil python-dotenv
 
-      - name: Exécuter le monitoring
+      - name: Run monitoring
         run: python monitor.py --once
 
-      - name: Générer rapport TXT
+      - name: Generate report
         run: python monitor.py --report
 
-      - name: Envoyer email
-        run: python monitor.py --send-email
+      - name: Send latest report via email
+        run: |
+          python - << 'EOF'
+          import os, smtplib
+          from email.mime.text import MIMEText
+          from pathlib import Path
 
-      - name: Upload logs et backup
+          monitor_dir = Path(os.environ["MONITOR_DIR"])
+          txt_files = sorted(monitor_dir.glob("report_*.txt"), reverse=True)
+          if not txt_files:
+              print("Aucun rapport TXT à envoyer")
+              exit(1)
+
+          latest_txt = txt_files[0]
+          with latest_txt.open("r", encoding="utf-8") as f:
+              content = f.read()
+
+          msg = MIMEText(content, "plain")
+          msg["Subject"] = f"WordPress Monitoring Report - {os.environ['SITE_URL']}"
+          msg["From"] = os.environ["SMTP_USER"]
+          msg["To"] = os.environ["ALERT_EMAIL"]
+
+          try:
+              server = smtplib.SMTP(os.environ["SMTP_SERVER"], int(os.environ["SMTP_PORT"]))
+              server.starttls()
+              server.login(os.environ["SMTP_USER"], os.environ["SMTP_PASS"])
+              server.sendmail(os.environ["SMTP_USER"], os.environ["ALERT_EMAIL"], msg.as_string())
+              server.quit()
+              print(f"Email envoyé à {os.environ['ALERT_EMAIL']}")
+          except Exception as e:
+              print(f"Erreur envoi email: {e}")
+              exit(1)
+          EOF
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: monitoring-logs
+          name: monitor-artifacts
           path: |
             monitor_data/
             backups/
