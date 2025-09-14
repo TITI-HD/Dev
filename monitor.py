@@ -265,7 +265,7 @@ def backup_wordpress_content(source_dir: Path=config.MONITOR_DIR):
                 shutil.copy2(src,dst)
                 files_copied+=1
             except: pass
-    log(f"Sauvegarde terminée: {files_copied} fichiers copiés}
+    log(f"Sauvegarde terminée: {files_copied} fichiers copiés.", "INFO")
 
 def restore_all_files(target_dir: Path = config.RESTORE_DIR):
     metadata_file = config.BACKUP_DIR / "metadata.json"
