@@ -1,17 +1,14 @@
-name: WordPress.com Monitoring & Backup
-
 on:
-  push:
-    branches: ["main"]
   schedule:
     - cron: '0 */3 * * *'   # Tous les 3h
+  push:
+    branches: ["main"]
   workflow_dispatch:         # Lancement manuel possible
 
 env:
   SITE_URL: "https://oupssecuretest.wordpress.com"
   MONITOR_DIR: "monitor_data"
   BACKUP_DIR: "backups"
-  RESTORE_DIR: "restored"
   ALERT_EMAIL: "danieltiti882@gmail.com"
   SMTP_SERVER: "smtp.gmail.com"
   SMTP_PORT: "587"
@@ -36,13 +33,12 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests python-dateutil python-dotenv
+          pip install requests python-dateutil
 
       - name: Create necessary folders
         run: |
           mkdir -p ${{ env.MONITOR_DIR }}
           mkdir -p ${{ env.BACKUP_DIR }}
-          mkdir -p ${{ env.RESTORE_DIR }}
 
       - name: Run WP Monitor (scan + backup + report)
         run: python monitor.py --once
@@ -56,7 +52,11 @@ jobs:
             exit 1
           fi
 
-      - name: Send report via email
+      - name: List latest backup JSON
+        run: |
+          ls -lt ${{ env.BACKUP_DIR }}/backup_*.json | head -1
+
+      - name: Send latest report via email
         run: |
           python - << 'EOF'
 import os, smtplib
@@ -68,9 +68,9 @@ txt_files = sorted(monitor_dir.glob("report_*.txt"), reverse=True)
 if not txt_files:
     print("Aucun rapport TXT à envoyer")
     exit(1)
+
 latest_txt = txt_files[0]
-with latest_txt.open("r", encoding="utf-8") as f:
-    content = f.read()
+content = latest_txt.read_text(encoding="utf-8")
 
 msg = MIMEText(content, "plain")
 msg["Subject"] = f"WordPress.com Monitoring Report - {os.environ['SITE_URL']}"
