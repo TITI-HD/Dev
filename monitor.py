@@ -302,6 +302,63 @@ def run_all():
         send_email(f"[ALERTE WP] {new_incidents_count} incident(s) détecté(s) - {config.SITE_URL}", report_text)
     log("Cycle complet terminé ✅")
 
+
+............
+Ensuite...
+...........
+
+
+
+def check_wordpress_com_site():
+    """Vérifie disponibilité, contenu, patterns suspects et SSL pour WordPress.com"""
+    results = {}
+    # Disponibilité
+    try:
+        resp = requests.get(config.SITE_URL, timeout=15)
+        results['status_code'] = resp.status_code
+        results['available'] = resp.status_code == 200
+        if not results['available']:
+            incident_manager.add("site_unavailable", {"status_code": resp.status_code}, "high", notify=True)
+    except Exception as e:
+        incident_manager.add("site_access_error", {"error": str(e)}, "high", notify=True)
+
+    # Intégrité contenu (homepage + feed)
+    endpoints = [("/", "homepage"), ("/feed/", "rss"), ("/comments/feed/", "comments")]
+    for path, name in endpoints:
+        try:
+            url = config.SITE_URL.rstrip("/") + path
+            r = requests.get(url, timeout=10)
+            content = r.text
+            ref_file = config.MONITOR_DIR / f"{name}.ref"
+            old_hash = ref_file.read_text(encoding='utf-8').strip() if ref_file.exists() else ""
+            current_hash = compute_hash(content)
+            if old_hash and current_hash != old_hash:
+                diff = '\n'.join(difflib.unified_diff(
+                    ref_file.read_text().splitlines(), content.splitlines(), lineterm=''))
+                incident_manager.add("content_changed", {'endpoint': name, 'diff': diff[:1000]}, "medium", notify=True)
+            ref_file.write_text(current_hash, encoding='utf-8')
+        except Exception as e:
+            incident_manager.add("content_check_error", {"endpoint": name, "error": str(e)}, "medium", notify=True)
+
+    # SSL
+    try:
+        hostname = config.SITE_URL.replace("https://", "").replace("http://", "").split("/")[0]
+        ctx = ssl.create_default_context()
+        with ctx.wrap_socket(socket.socket(), server_hostname=hostname) as s:
+            s.settimeout(8)
+            s.connect((hostname, 443))
+            cert = s.getpeercert()
+            expire_dt = dateutil_parser.parse(cert['notAfter'])
+            delta = (expire_dt - datetime.now(timezone.utc)).days
+            results['ssl_days_left'] = delta
+            if delta < 30:
+                incident_manager.add("ssl_warning", {"days_left": delta}, "medium", notify=True)
+    except Exception as e:
+        incident_manager.add("ssl_error", {"error": str(e)}, "medium", notify=True)
+
+    return results
+
+
 # -------------------
 # CLI
 # -------------------
