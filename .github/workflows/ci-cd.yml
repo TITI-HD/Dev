@@ -1,4 +1,4 @@
-name: WordPress CI/CD - Full Monitoring
+name: WordPress CI/CD - Monitoring & Backup
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
   pull_request:
   schedule:
     - cron: '0 */3 * * *'   # Monitoring toutes les 3h
-    - cron: '30 8 * * *'    # Rapport quotidien à 08h30
-  workflow_dispatch:        # Lancement manuel possible
+    - cron: '0 8 * * *'     # Rapport quotidien à 08h00
+  workflow_dispatch:
 
 env:
   SITE_URL: "https://oupssecuretest.wordpress.com"
@@ -25,12 +25,10 @@ env:
 jobs:
   monitoring:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
@@ -38,72 +36,21 @@ jobs:
       - name: Installer dépendances
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt || pip install requests schedule python-dateutil python-dotenv
+          pip install -r requirements.txt || pip install requests schedule python-dateutil
 
-      - name: Lancer monitoring (exécution unique)
-        id: run_monitor
-        run: |
-          python monitor.py --once
+      - name: Exécuter le monitoring
+        run: python monitor.py --once
 
-      - name: Vérifier génération des rapports
-        run: |
-          mkdir -p workflow-logs
-          shopt -s nullglob
-          txt_files=(monitor_data/report_*.txt)
-          html_files=(monitor_data/report_*.html)
-          
-          if (( ${#txt_files[@]} )); then
-              echo "<li style='color:green;'>Rapport TXT généré avec succès</li>" >> workflow-logs/logs.html
-          else
-              echo "<li style='color:red;'>ERREUR génération rapport TXT</li>" >> workflow-logs/logs.html
-              exit 1
-          fi
+      - name: Générer rapport TXT
+        run: python monitor.py --report
 
-          if (( ${#html_files[@]} )); then
-              echo "<li style='color:green;'>Rapport HTML généré avec succès</li>" >> workflow-logs/logs.html
-          else
-              echo "<li style='color:red;'>ERREUR génération rapport HTML</li>" >> workflow-logs/logs.html
-              exit 1
-          fi
+      - name: Envoyer email
+        run: python monitor.py --send-email
 
-      - name: Upload artefacts
+      - name: Upload logs et backup
         uses: actions/upload-artifact@v4
         with:
           name: monitoring-logs
           path: |
             monitor_data/
-            workflow-logs/
-
-      - name: Envoyer email de notification
-        if: always()
-        run: |
-          python - << 'EOF'
-          import os, smtplib
-          from email.mime.text import MIMEText
-          from pathlib import Path
-
-          monitor_dir = Path(os.environ["MONITOR_DIR"])
-          html_files = sorted(monitor_dir.glob("report_*.html"), reverse=True)
-          if not html_files:
-              print("Aucun rapport HTML à envoyer")
-              exit(1)
-          latest_html = html_files[0]
-          with latest_html.open("r", encoding="utf-8") as f:
-              content = f.read()
-
-          msg = MIMEText(content, "html")
-          msg["Subject"] = f"WordPress Monitoring Report - {os.environ['SITE_URL']}"
-          msg["From"] = os.environ["SMTP_USER"]
-          msg["To"] = os.environ["ALERT_EMAIL"]
-
-          try:
-              server = smtplib.SMTP(os.environ["SMTP_SERVER"], int(os.environ["SMTP_PORT"]))
-              server.starttls()
-              server.login(os.environ["SMTP_USER"], os.environ["SMTP_PASS"])
-              server.sendmail(os.environ["SMTP_USER"], os.environ["ALERT_EMAIL"], msg.as_string())
-              server.quit()
-              print(f"Email envoyé à {os.environ['ALERT_EMAIL']}")
-          except Exception as e:
-              print(f"Erreur envoi email: {e}")
-              exit(1)
-          EOF
+            backups/
