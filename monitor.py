@@ -303,12 +303,6 @@ def run_all():
     log("Cycle complet terminé ✅")
 
 
-............
-Ensuite...
-...........
-
-
-
 def check_wordpress_com_site():
     """Vérifie disponibilité, contenu, patterns suspects et SSL pour WordPress.com"""
     results = {}
