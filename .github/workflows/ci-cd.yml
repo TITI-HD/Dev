@@ -1,13 +1,13 @@
-name: WordPress.com CI/CD - Monitoring & Backup
+name: WordPress CI/CD - Full Monitoring
 
 on:
   push:
     branches: ["main"]
   pull_request:
   schedule:
-    - cron: '0 */3 * * *'    # Monitoring toutes les 3h
-    - cron: '30 8 * * *'     # Rapport quotidien à 08h30
-  workflow_dispatch:          # Lancement manuel possible
+    - cron: '0 */3 * * *'     # Monitoring toutes les 3h
+    - cron: '30 8 * * *'      # Rapport quotidien à 08h30
+  workflow_dispatch:           # Lancement manuel possible
 
 env:
   SITE_URL: "https://oupssecuretest.wordpress.com"
@@ -25,13 +25,11 @@ env:
 jobs:
   monitoring:
     runs-on: ubuntu-latest
-    if: github.event_name != 'schedule' || github.event.schedule != '30 8 * * *'
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
@@ -39,91 +37,33 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt || pip install requests schedule python-dateutil
+          pip install -r requirements.txt || pip install requests schedule python-dateutil python-dotenv
 
       - name: Create necessary folders
         run: |
           mkdir -p ${{ env.MONITOR_DIR }}
           mkdir -p ${{ env.BACKUP_DIR }}
           mkdir -p ${{ env.RESTORE_DIR }}
-          mkdir -p workflow-logs
 
-      - name: Run WP Monitor (exécution unique)
+      - name: Run WP Monitor
         run: |
-          set -o pipefail
           python monitor.py --once 2>&1 | tee ${{ env.MONITOR_DIR }}/last_run.log
 
-      - name: Check TXT report generation
+      - name: Verify TXT report
         run: |
           if ls ${{ env.MONITOR_DIR }}/report_*.txt 1> /dev/null 2>&1; then
-            echo "<li style='color:green;'>Monitoring terminé avec succès</li>" >> workflow-logs/logs.html
+            echo "Rapport TXT généré ✅"
           else
-            echo "<li style='color:red;'>ERREUR Monitoring</li>" >> workflow-logs/logs.html
+            echo "ERREUR : rapport TXT non généré ❌"
             cat ${{ env.MONITOR_DIR }}/last_run.log
             exit 1
           fi
 
-      - name: Upload artefacts de monitoring
+      - name: Upload monitoring artefacts
         uses: actions/upload-artifact@v4
         with:
-          name: monitoring-logs
+          name: monitoring-artefacts
           path: |
-            monitor_data/
-            workflow-logs/
-
-      - name: Notify on failure
-        if: failure()
-        run: echo "Monitoring failed. Vérifier les logs dans workflow-logs."
-
-      - name: Notify on success
-        if: success()
-        run: echo "Monitoring terminé avec succès."
-
-  daily-report:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' && github.event.schedule == '30 8 * * *'
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt || pip install requests schedule python-dateutil
-
-      - name: Generate daily report
-        run: python monitor.py --report
-
-      - name: Prepare log folder
-        run: mkdir -p workflow-logs
-
-      - name: Check daily report
-        run: |
-          if ls ${{ env.MONITOR_DIR }}/report_*.txt 1> /dev/null 2>&1; then
-            echo "<li style='color:green;'>Rapport quotidien généré avec succès</li>" >> workflow-logs/logs.html
-          else
-            echo "<li style='color:red;'>ERREUR Génération rapport quotidien</li>" >> workflow-logs/logs.html
-            exit 1
-          fi
-
-      - name: Upload daily report artefacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: daily-report-logs
-          path: |
-            monitor_data/
-            workflow-logs/
-
-      - name: Notify on failure
-        if: failure()
-        run: echo "Daily report generation failed. Vérifier les logs."
-
-      - name: Notify on success
-        if: success()
-        run: echo "Daily report généré avec succès."
+            ${{ env.MONITOR_DIR }}/
+            ${{ env.BACKUP_DIR }}/
+            ${{ env.RESTORE_DIR }}/
