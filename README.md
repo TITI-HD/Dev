@@ -1,4 +1,4 @@
-
+3
 Ce projet utilise GitHub Actions pour superviser la disponibilité, la sécurité et effectuer des sauvegardes automatiques d'un site WordPress.com. Il génère des rapports détaillés et envoie des alertes par email en cas de problème.
 Fonctionnalités
  * Surveillance automatique : Vérification de la disponibilité HTTP et de l'état du certificat SSL.
@@ -108,4 +108,3 @@ Développement et Contact
  * Ajouter des fonctionnalités : Modifiez le script monitor.py pour ajouter des patterns de sécurité, des alertes supplémentaires (via Twilio, par exemple) ou pour l'adapter à un site auto-hébergé.
  * Auteur : Daniel Titi
  * Email : danieltiti882@gmail.com
-J'espère que cette version vous est utile ! Si vous avez besoin de plus d'informations, n'hésitez pas à me demander.
