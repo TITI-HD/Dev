@@ -5,7 +5,7 @@ on:
     branches: ["main"]
   pull_request:
   schedule:
-    - cron: '0 */2 * * *'   # Monitoring toutes les 2h
+    - cron: '0 */3 * * *'   # Monitoring toutes les 3h
     - cron: '30 8 * * *'    # Rapport quotidien à 08h30
   workflow_dispatch:        # Lancement manuel possible
 
@@ -38,23 +38,28 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt || pip install requests schedule python-dateutil
 
-      - name: Lancer monitoring (exécution unique)
+      - name: Lancer monitoring
         run: |
-          python monitor.py --once
+          # Détecter si cron = rapport quotidien
+          if [[ "${{ github.event.schedule }}" == "30 8 * * *" ]]; then
+            python monitor.py --report
+          else
+            python monitor.py --once
+          fi
 
       - name: Préparer dossier logs
         run: mkdir -p workflow-logs
 
-      - name: Écrire résultat OK/ERREUR
+      - name: Vérifier succès
         run: |
-          if [ -f "monitor_data/logs.html" ]; then
+          if ls monitor_data/*.html 1> /dev/null 2>&1; then
             echo "<li style='color:green;'>Monitoring terminé avec succès</li>" >> workflow-logs/logs.html
           else
             echo "<li style='color:red;'>ERREUR Monitoring</li>" >> workflow-logs/logs.html
             exit 1
           fi
 
-      - name: Upload artefacts de monitoring
+      - name: Upload artefacts
         uses: actions/upload-artifact@v4
         with:
           name: monitoring-logs
@@ -62,130 +67,6 @@ jobs:
             monitor_data/
             workflow-logs/
 
-      - name: Notify on failure
-        if: failure()
+      - name: Envoyer notification
         run: |
-          echo "Monitoring failed. Sending notification..."
-          # Ajoutez ici le code pour envoyer une notification par email ou autre moyen
-
-      - name: Notify on success
-        if: success()
-        run: |
-          echo "Monitoring succeeded. Sending notification..."
-          # Ajoutez ici le code pour envoyer une notification par email ou autre moyen
-
-  daily-report:
-    runs-on: ubuntu-latest
-    if: github.event.schedule == '30 8 * * *'
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-
-      - name: Installer dépendances
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt || pip install requests schedule python-dateutil
-
-      - name: Générer rapport quotidien
-        run: |
-          python monitor.py --report
-
-      - name: Préparer dossier logs
-        run: mkdir -p workflow-logs
-
-      - name: Écrire résultat OK/ERREUR
-        run: |
-          if [ -f "monitor_data/report_*.txt" ]; then
-            echo "<li style='color:green;'>Rapport quotidien généré avec succès</li>" >> workflow-logs/logs.html
-          else
-            echo "<li style='color:red;'>ERREUR Génération rapport quotidien</li>" >> workflow-logs/logs.html
-            exit 1
-          fi
-
-      - name: Upload artefacts de rapport quotidien
-        uses: actions/upload-artifact@v4
-        with:
-          name: daily-report-logs
-          path: |
-            monitor_data/
-            workflow-logs/
-
-      - name: Notify on failure
-        if: failure()
-        run: |
-          echo "Daily report generation failed. Sending notification..."
-          # Ajoutez ici le code pour envoyer une notification par email ou autre moyen
-
-      - name: Notify on success
-        if: success()
-        run: |
-          echo "Daily report generated successfully. Sending notification..."
-          # Ajoutez ici le code pour envoyer une notification par email ou autre moyenname: WordPress CI/CD - Full Monitoring
-
-on:
-  push:
-    branches: ["main"]
-  pull_request:
-  schedule:
-    - cron: '0 */3 * * *'   # Monitoring toutes les 3h
-    - cron: '0 8 * * *'     # Rapport quotidien à 08h00
-  workflow_dispatch:        # Lancement manuel possible
-
-env:
-  SITE_URL: "https://oupssecuretest.wordpress.com"
-  BACKUP_DIR: "backups"
-  RESTORE_DIR: "restored"
-  ALERT_EMAIL: "danieltiti882@gmail.com"
-  SMTP_SERVER: "smtp.gmail.com"
-  SMTP_PORT: 587
-  SMTP_USER: "danieltiti882@gmail.com"
-  SMTP_PASS: ${{ secrets.SMTP_PASS }}
-  MONITOR_DIR: "monitor_data"
-
-jobs:
-  monitoring:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-
-      - name: Installer dépendances
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt || pip install requests schedule python-dateutil
-
-      - name: Lancer monitoring (exécution unique)
-        run: |
-          python monitor.py --once
-
-      - name: Préparer dossier logs
-        run: mkdir -p workflow-logs
-
-      - name: Écrire résultat OK/ERREUR
-        run: |
-          if [ -f "monitor_data/logs.html" ]; then
-            echo "<li style='color:green;'>Monitoring terminé avec succès</li>" >> workflow-logs/logs.html
-          else
-            echo "<li style='color:red;'>ERREUR Monitoring</li>" >> workflow-logs/logs.html
-            exit 1
-          fi
-
-      - name: Upload artefacts de monitoring
-        uses: actions/upload-artifact@v4
-        with:
-          name: monitoring-logs
-          path: |
-            monitor_data/
-            workflow-logs/
+          python monitor.py --send-email
