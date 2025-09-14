@@ -1,69 +1,111 @@
-# Supervision et Sauvegarde WordPress.com
 
-Ce projet permet de superviser la disponibilité, la sécurité et d'effectuer des sauvegardes automatiques d'un site WordPress.com via GitHub Actions.
+Ce projet utilise GitHub Actions pour superviser la disponibilité, la sécurité et effectuer des sauvegardes automatiques d'un site WordPress.com. Il génère des rapports détaillés et envoie des alertes par email en cas de problème.
+Fonctionnalités
+ * Surveillance automatique : Vérification de la disponibilité HTTP et de l'état du certificat SSL.
+ * Scan de sécurité : Utilisation de WPScan pour détecter les versions et vulnérabilités connues. Le script identifie également des patterns suspects comme eval ou base64_decode dans le contenu du site.
+ * Sauvegarde automatique : Archivage du contenu public (pages, RSS, commentaires) dans des artefacts GitHub.
+ * Génération de rapports : Création de rapports détaillés aux formats TXT et HTML.
+ * Notifications : Envoi d'alertes par email (SMTP) en cas d'incidents critiques ou moyens.
+ * Automatisation : Exécution planifiée via GitHub Actions, ou en mode unique via le script monitor.py.
+Limitations sur WordPress.com
+Gardez à l'esprit que ce projet est conçu pour une plateforme gérée. Les fonctionnalités sont limitées par l'accès public à l'API de WordPress.com.
+ * Accès à l'API : Le script ne peut interagir qu'avec les APIs publiques.
+ * Pas d'accès direct : Il est impossible d'accéder directement à la base de données ou aux fichiers sur le serveur.
+ * Sauvegarde partielle : La sauvegarde se limite au contenu public. Les thèmes et les plugins ne peuvent pas être scannés ou sauvegardés automatiquement.
+> Note : Pour un site WordPress auto-hébergé, le script et le workflow devraient être adaptés pour tirer parti d'un accès complet à la base de données et aux fichiers.
+> 
+Prérequis
+Dépendances système
+ * Python version 3.11 ou supérieure.
+ * pip
+ * Git
+Dépendances Python
+Installez les bibliothèques requises en utilisant le fichier requirements.txt :
+pip install -r requirements.txt
 
-## Fonctionnalités
-<<<<<<< HEAD
-- Surveillance automatique de la disponibilité HTTP du site
-- Scan de sécurité via Bandit
-- Sauvegarde automatique du contenu public (RSS, API, pages)
-- Alertes par email et WhatsApp en cas de problème
-- Archivage des sauvegardes dans les artefacts GitHub
-=======
-- Vérification automatique de la disponibilité HTTP du site.
-- Scan de sécurité via l'API WPScan (détection de la version WordPress et interrogation pour vulnérabilités).
-- Envoi d'alertes par e-mail en cas de problème (indisponibilité ou vulnérabilités détectées).
-- Résultats consultables dans l’onglet Actions de GitHub.
+Si le fichier n'est pas disponible, vous pouvez les installer manuellement :
+pip install requests schedule python-dateutil python-dotenv
 
+Configuration
+Variables d'environnement
+Créez un fichier .env.local à la racine du projet et définissez les variables suivantes :
+SITE_URL=https://oupssecuretest.wordpress.com
+ALERT_EMAIL=ton_email@example.com
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=ton_email@gmail.com
+SMTP_PASS=ton_mot_de_passe_app
+MONITOR_DIR=monitor_data
+BACKUP_DIR=backups
+RESTORE_DIR=restored
+LOG_RETENTION_DAYS=30
+CHECK_INTERVAL_HOURS=3
+USE_EMOJI=1
+ANONYMIZE_SAMPLES=1
+WPSCAN_API=ta_clef_wpscan
 
-## Utilisation
+> Attention : Pour Gmail, vous devez utiliser un mot de passe d'application pour vous connecter.
+> 
+Secrets GitHub
+Pour sécuriser vos informations sensibles dans GitHub Actions, ajoutez les secrets suivants dans les paramètres de votre dépôt :
+ * SMTP_PASS
+ * WPSCAN_API (si vous activez les scans WPScan)
+Structure du projet
+.
+├── monitor.py          # Script principal
+├── requirements.txt    # Dépendances Python
+├── monitor_data/       # Rapports, logs et historique d'incidents
+├── backups/            # Fichiers de sauvegarde
+├── restored/           # Fichiers de restauration
+├── .github/
+│   └── workflows/
+│       └── monitor.yml # Workflow GitHub Actions
+├── .env.local          # Configuration locale
+└── README.md
 
-1. Ajoutez les secrets suivants dans les paramètres GitHub du dépôt :
-<<<<<<< HEAD
-   - `ALERT_EMAIL` : L'adresse e-mail pour les alertes
-   - `SMTP_*` : Configuration SMTP pour l'envoi d'emails
-   - `TWILIO_*` : Configuration Twilio pour les notifications WhatsApp
+Utilisation
+Exécution locale
+ * Clonez le dépôt :
+   git clone <URL_DU_DEPOT>
+cd <REPERTOIRE>
 
-2. Configurez les variables d'environnement :
-   - `SITE_URL` : URL de votre site WordPress.com
+ * Installez les dépendances :
+   pip install -r requirements.txt
 
-3. Le workflow s'exécute automatiquement selon la planification ou manuellement
+ * Configurez le fichier .env.local.
+ * Lancer le script avec les options suivantes :
+   * Pour une exécution unique :
+     python monitor.py --once
 
-## Planification
-- Surveillance : Toutes les 6 heures
-- Sauvegarde : Tous les jours à 2h du matin
+   * Pour générer uniquement le rapport :
+     python monitor.py --report
 
-## Limitations WordPress.com
-- Accès limité aux APIs publiques
-- Pas d'accès direct à la base de données
-- Sauvegarde limitée au contenu public
+   * Pour sauvegarder uniquement le contenu :
+     python monitor.py --backup
 
-    ✅ Sécurisation : Scan de sécurité avec Bandit, surveillance continue
+   * Pour restaurer depuis un backup :
+     python monitor.py --restore restored/
 
-    ✅ Sauvegarde : Script de sauvegarde du contenu public avec compression et vérification d'intégrité
-
-    ✅ Restauration : Archivage des sauvegardes dans les artefacts GitHub pour restauration manuelle
-
-    ✅ CI/CD : Workflows GitHub Actions pour automatisation
-
-    ✅ Monitoring : Alertes temps réel par email et WhatsApp
-
-    ✅ Documentation : README mis à jour avec instructions complètes
-
-Les limitations de WordPress.com sont correctement prises en compte, et la solution propose une approche maximisant les possibilités offertes par les APIs publiques.
-=======
-   - `WPSCAN_API` : Votre clé API WPScan (obtenue sur https://wpscan.com/register).
-   - `ALERT_EMAIL` : L'adresse e-mail pour les alertes.
-   - `SMTP_USER` : L'utilisateur SMTP (par exemple, votre adresse Gmail).
-   - `SMTP_PASS` : Le mot de passe SMTP (par exemple, un mot de passe d'application pour Gmail).
-2. Modifiez l’URL du site dans `.github/workflows/monitor.yml` si nécessaire (par défaut : https://oupssecuretest.wordpress.com).
-3. Poussez le projet sur GitHub.
-4. Lancez le workflow depuis l’onglet Actions ou attendez l'exécution planifiée.
-
-## Limites
-- Pas de déploiement, backup ou monitoring de fichiers (WordPress.com ne le permet pas).
-- Le scan se limite à la version WordPress core détectée publiquement ; pour les plugins/thèmes, des adaptations supplémentaires seraient nécessaires.
-- Pour un WordPress auto-hébergé, adaptez le pipeline et les scripts Python.
-
-## Dépendances
-- Voir `requirements.txt` pour les bibliothèques Python requises.
+Exécution planifiée avec GitHub Actions
+Le workflow monitor.yml est pré-configuré pour automatiser l'exécution.
+ * Fréquence : Le monitoring s'exécute toutes les 3 heures, et un rapport quotidien est généré à 08h30.
+ * Artefacts : Les rapports et les sauvegardes sont archivés automatiquement et peuvent être consultés dans l'onglet Actions de votre dépôt GitHub.
+Reporting et Sauvegarde
+Rapports
+ * Rapport TXT : monitor_data/report_YYYYMMDD_HHMMSS.txt
+ * Rapport HTML : monitor_data/logs.html
+ * Historique des incidents : monitor_data/incident_history.json
+Sauvegarde & Restauration
+Les sauvegardes du contenu public sont stockées dans le dossier backups/.
+Vous pouvez les restaurer manuellement en déplaçant les fichiers vers le dossier restored/ et en utilisant la commande python monitor.py --restore.
+Bonnes Pratiques et Avertissements
+ * Ne jamais committer vos mots de passe ou secrets dans le code. Utilisez toujours les secrets GitHub.
+ * Testez les sauvegardes et les restaurations régulièrement.
+ * Vérifiez toujours la validité de vos dépendances et de votre configuration SMTP.
+ * Consultez monitor_data/logs.html pour une vue d'ensemble des incidents.
+ * Le projet est limité par l'accès public à l'API de WordPress.com.
+Développement et Contact
+ * Ajouter des fonctionnalités : Modifiez le script monitor.py pour ajouter des patterns de sécurité, des alertes supplémentaires (via Twilio, par exemple) ou pour l'adapter à un site auto-hébergé.
+ * Auteur : Daniel Titi
+ * Email : danieltiti882@gmail.com
+J'espère que cette version vous est utile ! Si vous avez besoin de plus d'informations, n'hésitez pas à me demander.
