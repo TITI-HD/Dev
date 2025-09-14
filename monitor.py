@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-WordPress Monitoring & Backup & Restore & Report - Tout-en-un
-- Surveillance: disponibilité, intégrité, patterns suspects, SSL
-- Backup: sauvegarde du site WordPress
-- Restore: restauration des fichiers avec vérification
-- Reporting: rapports détaillés + historique incidents (TXT + HTML)
-- Planification: exécution planifiée avec nettoyage des logs
-- Option --once pour exécution unique
-- Option --test pour tests unitaires
+WP Monitor - version améliorée
+- Envoi d'un résumé email à CHAQUE cycle
+- Evite récursion entre IncidentManager.add() et send_alert()
+- Parsing SSL plus robuste
+- Configuration via variables d'environnement
 """
 
 import os
 import sys
 import time
 import json
-import glob
 import shutil
 import hashlib
 import re
@@ -23,27 +20,28 @@ import socket
 import difflib
 import logging
 import argparse
+import subprocess
 from logging.handlers import RotatingFileHandler
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime, timedelta, timezone   # <-- ajout timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List
-from dateutil import parser, tz
 
+# dépendances optionnelles testées plus loin (requests, schedule, dateutil)
 # --- Vérification des dépendances ---
 MISSING = []
 try:
     import requests
-except ImportError:
+except Exception:
     MISSING.append("requests")
 try:
     import schedule
-except ImportError:
+except Exception:
     MISSING.append("schedule")
 try:
-    from dateutil import parser, tz
-except ImportError:
+    from dateutil import parser as dateutil_parser, tz as dateutil_tz
+except Exception:
     MISSING.append("python-dateutil")
 
 if MISSING:
@@ -54,29 +52,33 @@ if MISSING:
 # === Configuration ===
 class Config:
     def __init__(self):
+        # Variables d'environnement recommandées :
+        # SITE_URL, ALERT_EMAIL, SMTP_SERVER, SMTP_PORT, SMTP_USER, SMTP_PASS
         self.SITE_URL = os.environ.get("SITE_URL", "https://oupssecuretest.wordpress.com")
-        self.ALERT_EMAIL = os.environ.get("ALERT_EMAIL", "danieltiti882@gmail.com")
+        self.ALERT_EMAIL = os.environ.get("ALERT_EMAIL", None)
         self.SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
         self.SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
-        self.SMTP_USER = os.environ.get("SMTP_USER", "danieltiti882@gmail.com")
-        self.SMTP_PASS = os.environ.get("SMTP_PASS", "nrqi mihe mtgi iabo")
-        self.MONITOR_DIR = Path("monitor_data")
-        self.MONITOR_DIR.mkdir(exist_ok=True)
+        self.SMTP_USER = os.environ.get("SMTP_USER", None)
+        self.SMTP_PASS = os.environ.get("SMTP_PASS", None)  # NE PAS commit en dur ; utiliser secrets
+        self.MONITOR_DIR = Path(os.environ.get("MONITOR_DIR", "monitor_data"))
+        self.MONITOR_DIR.mkdir(exist_ok=True, parents=True)
         self.INCIDENT_HISTORY_FILE = self.MONITOR_DIR / "incident_history.json"
         self.LOG_RETENTION_DAYS = int(os.environ.get("LOG_RETENTION_DAYS", "30"))
         self.CHECK_INTERVAL_HOURS = int(os.environ.get("CHECK_INTERVAL_HOURS", "3"))
-        self.USE_EMOJI = bool(os.environ.get("USE_EMOJI", os.name != "nt"))
-        self.ANONYMIZE_SAMPLES = bool(os.environ.get("ANONYMIZE_SAMPLES", True))
-        self.BACKUP_DIR = Path("backups")
-        self.BACKUP_DIR.mkdir(exist_ok=True)
-        self.RESTORE_DIR = Path("restored")
-        self.RESTORE_DIR.mkdir(exist_ok=True)
+        self.USE_EMOJI = bool(os.environ.get("USE_EMOJI", "1") == "1")
+        self.ANONYMIZE_SAMPLES = bool(os.environ.get("ANONYMIZE_SAMPLES", "1") == "1")
+        self.BACKUP_DIR = Path(os.environ.get("BACKUP_DIR", "backups"))
+        self.BACKUP_DIR.mkdir(exist_ok=True, parents=True)
+        self.RESTORE_DIR = Path(os.environ.get("RESTORE_DIR", "restored"))
+        self.RESTORE_DIR.mkdir(exist_ok=True, parents=True)
         self.validate()
 
     def validate(self):
-        if not self.SMTP_PASS:
-            raise ValueError("SMTP_PASS obligatoire pour alertes email")
-        if not self.SITE_URL.startswith(('http://','https://')):
+        if not self.ALERT_EMAIL:
+            print("ATTENTION: ALERT_EMAIL non défini — les alertes ne seront pas envoyées.")
+        if not self.SMTP_USER or not self.SMTP_PASS:
+            print("ATTENTION: SMTP_USER ou SMTP_PASS non définis — l'envoi email échouera.")
+        if not self.SITE_URL.startswith(("http://", "https://")):
             print("ATTENTION: SITE_URL devrait commencer par http:// ou https://")
 
 config = Config()
@@ -96,37 +98,45 @@ def log(message: str, level="INFO"):
 class IncidentManager:
     def __init__(self, history_file: Path):
         self.history_file = history_file
-        self.load_incidents()
+        self._ensure_file()
+
+    def _ensure_file(self):
+        if not self.history_file.exists():
+            self.save_incidents([])
 
     def load_incidents(self) -> List[Dict]:
-        if self.history_file.exists():
+        try:
             with self.history_file.open('r', encoding='utf-8') as f:
                 return json.load(f)
-        return []
+        except Exception:
+            return []
 
     def save_incidents(self, incidents: List[Dict]):
         with self.history_file.open('w', encoding='utf-8') as f:
             json.dump(incidents, f, ensure_ascii=False, indent=4)
 
-    def add(self, type_: str, details: Dict, severity="medium") -> Dict:
+    def add(self, type_: str, details: Dict, severity="medium", notify: bool = False) -> Dict:
+        """
+        Ajoute un incident aux historiques.
+        Si notify=True ET severity in ['medium','high'] -> envoie un e-mail par send_alert().
+        NB: send_alert() NE rappellera PAS add() pour éviter la récursion.
+        """
         history = self.load_incidents()
         incident = {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "type": type_,
             "severity": severity,
             "details": details
         }
         history.append(incident)
-        if len(history) > 100:
-            history = history[-100:]
+        # garder les 100 derniers
+        history = history[-100:]
         self.save_incidents(history)
 
-        # Envoi automatique email pour incidents medium ou high
-        if severity in ["medium", "high"]:
+        if notify and severity in ["medium", "high"]:
             subject = f"[ALERTE WP] {type_} ({severity})"
-            body = f"Incident détecté:\nType: {type_}\nSévérité: {severity}\nDétails: {details}\nHorodatage: {incident['timestamp']}"
-            send_alert(subject, body, incident_type=type_)
-
+            body = f"Incident détecté:\nType: {type_}\nSévérité: {severity}\nDétails: {json.dumps(details, ensure_ascii=False)}\nHorodatage: {incident['timestamp']}"
+            send_alert(subject, body, incident_type=type_, html=False)  # send_alert n'ajoute pas d'incident
         return incident
 
 incident_manager = IncidentManager(config.INCIDENT_HISTORY_FILE)
@@ -138,50 +148,42 @@ def compute_hash(content: str) -> str:
 def emoji(symbol: str) -> str:
     return symbol if config.USE_EMOJI else ""
 
-def send_alert(subject: str, body: str, incident_type="general") -> bool:
+def send_alert(subject: str, body: str, incident_type="general", html: bool = True) -> bool:
+    """
+    Envoie un mail multipart (plain + html si demandé).
+    ATTENTION: ne modifie pas l'historique (pas d'appel à incident_manager.add()) pour éviter récursion.
+    """
     if not all([config.SMTP_SERVER, config.SMTP_USER, config.SMTP_PASS, config.ALERT_EMAIL]):
-        log("SMTP incomplet", "WARNING")
+        log("SMTP incomplet — e-mail non envoyé", "WARNING")
         return False
     try:
-        msg = MIMEMultipart()
+        msg = MIMEMultipart("alternative")
         msg['From'] = config.SMTP_USER
         msg['To'] = config.ALERT_EMAIL
         msg['Subject'] = subject
-        msg.attach(MIMEText(body, 'plain', 'utf-8'))
+
+        part1 = MIMEText(body, 'plain', 'utf-8')
+        msg.attach(part1)
+        if html:
+            html_body = "<html><body><pre style='font-family:monospace'>{}</pre></body></html>".format(
+                body.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            )
+            part2 = MIMEText(html_body, 'html', 'utf-8')
+            msg.attach(part2)
+
         import smtplib
-        with smtplib.SMTP(config.SMTP_SERVER, config.SMTP_PORT) as server:
-            server.starttls()
+        with smtplib.SMTP(config.SMTP_SERVER, config.SMTP_PORT, timeout=20) as server:
+            server.ehlo()
+            if config.SMTP_PORT in (587,):
+                server.starttls()
+                server.ehlo()
             server.login(config.SMTP_USER, config.SMTP_PASS)
             server.send_message(msg)
-        incident_manager.add(incident_type, {"subject": subject, "body": body, "sent_via":"email"})
-        log("Alerte envoyée")
+        log(f"Alerte envoyée -> {config.ALERT_EMAIL}")
         return True
     except Exception as e:
-        log(f"Erreur alerte: {e}", "ERROR")
+        log(f"Erreur envoi alerte: {e}", "ERROR")
         return False
-
-def run_all():
-    log("=== Début du cycle de surveillance ===")
-    initial_incidents = len(incident_manager.load_incidents())
-
-    check_site_availability()
-    check_content_integrity()
-    check_for_malicious_patterns()
-    check_ssl_cert()
-    backup_site()
-    generate_report()
-    cleanup_old_reports()
-
-    # Vérifier si de nouveaux incidents ont été ajoutés
-    new_incidents = len(incident_manager.load_incidents()) - initial_incidents
-    if new_incidents == 0:
-        # Aucun incident : envoyer email “tout va bien”
-        subject = "[INFO WP] Tout est OK ✅"
-        body = f"Aucun incident détecté sur {config.SITE_URL} pendant ce cycle.\nHorodatage: {datetime.now().isoformat()}"
-        send_alert(subject, body, incident_type="info")
-        log("Aucun incident détecté. Email d'information envoyé.")
-
-    log("Cycle complet terminé ✅")
 
 # === Surveillance ===
 def check_site_availability() -> Dict:
@@ -191,22 +193,25 @@ def check_site_availability() -> Dict:
         start = datetime.now()
         resp = requests.get(config.SITE_URL, timeout=15)
         results['status_code'] = resp.status_code
-        results['response_time'] = (datetime.now()-start).total_seconds()
+        results['response_time'] = (datetime.now() - start).total_seconds()
         results['available'] = resp.status_code == 200
-        log(f"Site accessible {emoji('✅')}" if results['available'] else f"HTTP {resp.status_code} {emoji('⚠️')}", "WARNING")
+        log(f"Site accessible {emoji('✅')}" if results['available'] else f"HTTP {resp.status_code} {emoji('⚠️')}", "INFO" if results['available'] else "WARNING")
+        if not results['available']:
+            incident_manager.add("site_unavailable", {"status_code": resp.status_code}, "high", notify=True)
     except Exception as e:
         results['error'] = str(e)
         log(f"Erreur accès site: {e}", "ERROR")
+        incident_manager.add("site_access_error", {"error": str(e)}, "high", notify=True)
     return results
 
 def check_content_integrity() -> Dict:
     log("Vérification intégrité...")
     results = {'changed': False, 'changes': [], 'error': None}
-    endpoints = [(config.SITE_URL, "homepage"), (config.SITE_URL+"/feed/","rss"), (config.SITE_URL+"/comments/feed/","comments")]
+    endpoints = [(config.SITE_URL, "homepage"), (config.SITE_URL + "/feed/", "rss"), (config.SITE_URL + "/comments/feed/", "comments")]
     for url, name in endpoints:
         try:
             resp = requests.get(url, timeout=10)
-            if resp.status_code==200:
+            if resp.status_code == 200:
                 content = resp.text
                 ref_file = config.MONITOR_DIR / f"{name}.ref"
                 content_file = config.MONITOR_DIR / f"{name}_content.ref"
@@ -216,9 +221,11 @@ def check_content_integrity() -> Dict:
                 if current_hash != old_hash and old_hash:
                     results['changed'] = True
                     diff = '\n'.join(difflib.unified_diff(old_content.splitlines(), content.splitlines(), lineterm=''))
-                    results['changes'].append({'endpoint':name,'url':url,'diff':diff[:500]+'...' if len(diff)>500 else diff})
-                    incident_manager.add("content_changed", {'endpoint':name,'url':url,'diff':diff[:500]+'...'}, "medium")
+                    short_diff = (diff[:1000] + '...') if len(diff) > 1000 else diff
+                    results['changes'].append({'endpoint': name, 'url': url, 'diff': short_diff})
+                    incident_manager.add("content_changed", {'endpoint': name, 'url': url, 'diff': short_diff}, "medium", notify=True)
                     log(f"Changement détecté: {name} {emoji('⚠️')}", "WARNING")
+                # writes (mise à jour des références)
                 ref_file.write_text(current_hash, encoding='utf-8')
                 content_file.write_text(content, encoding='utf-8')
             else:
@@ -231,19 +238,21 @@ def check_content_integrity() -> Dict:
 def check_for_malicious_patterns() -> Dict:
     log("Recherche patterns suspects...")
     results = {'suspicious_patterns': [], 'error': None}
-    patterns = [(r'eval\s*\(','eval() potentiellement dangereux','high'),
-                (r'base64_decode\s*\(','Décodage base64 suspect','medium'),
-                (r'exec\s*\(','Appel exec()','high')]
+    patterns = [
+        (r'eval\s*\(', 'eval() potentiellement dangereux', 'high'),
+        (r'base64_decode\s*\(', 'Décodage base64 suspect', 'medium'),
+        (r'exec\s*\(', 'Appel exec()', 'high'),
+    ]
     try:
         resp = requests.get(config.SITE_URL, timeout=10)
-        if resp.status_code==200:
+        if resp.status_code == 200:
             content = resp.text
             for pat, desc, sev in patterns:
                 matches = re.findall(pat, content, re.IGNORECASE)
                 if matches:
-                    sample = [m[:50]+'...' if len(m)>50 else m for m in matches]
-                    results['suspicious_patterns'].append({'pattern':pat,'description':desc,'matches':sample})
-                    incident_manager.add("suspicious_code", {'pattern':pat,'description':desc,'matches':sample}, sev)
+                    sample = [ (m[:120] + '...') if len(m) > 120 else m for m in matches ]
+                    results['suspicious_patterns'].append({'pattern': pat, 'description': desc, 'matches': sample})
+                    incident_manager.add("suspicious_code", {'pattern': pat, 'description': desc, 'matches': sample}, sev, notify=True)
                     log(f"Pattern suspect détecté: {desc} {emoji('⚠️')}", "WARNING")
     except Exception as e:
         results['error'] = str(e)
@@ -253,20 +262,27 @@ def check_for_malicious_patterns() -> Dict:
 def check_ssl_cert() -> Dict:
     results = {'valid': False, 'days_left': None, 'error': None}
     try:
-        hostname = config.SITE_URL.replace("https://","").replace("http://","").split("/")[0]
+        hostname = config.SITE_URL.replace("https://", "").replace("http://", "").split("/")[0]
         ctx = ssl.create_default_context()
         with ctx.wrap_socket(socket.socket(), server_hostname=hostname) as s:
-            s.settimeout(5)
+            s.settimeout(8)
             s.connect((hostname, 443))
             cert = s.getpeercert()
-            expire_date = datetime.strptime(cert['notAfter'], "%b %d %H:%M:%S %Y %Z")
-            # 🔧 Correction ici :
-            delta = (expire_date - datetime.now(timezone.utc)).days
-            results['valid'] = delta > 0
-            results['days_left'] = delta
-            if delta < 30:
-                incident_manager.add("ssl_warning", {'days_left': delta}, "medium")
-                log(f"Certificat SSL expire bientôt ({delta} jours) {emoji('⚠️')}", "WARNING")
+            # parse using dateutil to be robust
+            not_after = cert.get('notAfter')
+            if not_after:
+                expire_dt = dateutil_parser.parse(not_after)
+                # ensure timezone-aware UTC
+                if expire_dt.tzinfo is None:
+                    expire_dt = expire_dt.replace(tzinfo=dateutil_tz.tzutc())
+                delta = (expire_dt - datetime.now(timezone.utc)).days
+                results['valid'] = delta > 0
+                results['days_left'] = delta
+                if delta < 30:
+                    incident_manager.add("ssl_warning", {'days_left': delta}, "medium", notify=True)
+                    log(f"Certificat SSL expire bientôt ({delta} jours) {emoji('⚠️')}", "WARNING")
+            else:
+                log("Impossible de lire notAfter dans le certificat", "WARNING")
     except Exception as e:
         results['error'] = str(e)
         log(f"Erreur SSL: {e}", "ERROR")
@@ -278,27 +294,27 @@ def backup_site():
     backup_name = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
     backup_path = config.BACKUP_DIR / backup_name
     try:
-        shutil.make_archive(str(backup_path).replace(".zip",""), 'zip', config.MONITOR_DIR)
-        incident_manager.add("backup_success", {"backup_file":str(backup_path)}, "low")
-        log(f"Sauvegarde OK {emoji('✅')} -> {backup_path}")
+        shutil.make_archive(str(backup_path).replace(".zip", ""), 'zip', config.MONITOR_DIR)
+        incident_manager.add("backup_success", {"backup_file": str(backup_path)}, "low", notify=False)
+        log(f"Sauvegarde OK {emoji('✅')} -> {backup_path}", "INFO")
     except Exception as e:
-        incident_manager.add("backup_fail", {"error":str(e)}, "high")
+        incident_manager.add("backup_fail", {"error": str(e)}, "high", notify=True)
         log(f"Erreur backup: {e}", "ERROR")
 
 def restore_site(backup_file: Path):
     log(f"Démarrage restauration: {backup_file}")
     try:
         shutil.unpack_archive(str(backup_file), config.RESTORE_DIR)
-        incident_manager.add("restore_success", {"backup_file":str(backup_file)}, "low")
+        incident_manager.add("restore_success", {"backup_file": str(backup_file)}, "low", notify=False)
         log(f"Restauration OK {emoji('✅')} -> {config.RESTORE_DIR}")
     except Exception as e:
-        incident_manager.add("restore_fail", {"backup_file":str(backup_file),"error":str(e)}, "high")
+        incident_manager.add("restore_fail", {"backup_file": str(backup_file), "error": str(e)}, "high", notify=True)
         log(f"Erreur restauration: {e}", "ERROR")
 
 # === Reporting ===
 def generate_report() -> str:
     history = incident_manager.load_incidents()
-    # Rapport texte
+    # Rapport texte synthétique
     report = ["WordPress Monitoring Report", "============================", f"Total incidents: {len(history)}\n"]
     for inc in history[-20:]:
         ts = inc["timestamp"]
@@ -309,25 +325,20 @@ def generate_report() -> str:
     report_file = config.MONITOR_DIR / f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
     report_file.write_text(report_str, encoding='utf-8')
     log(f"Rapport généré -> {report_file}")
-
-    # 🔧 Nouveau rapport HTML
-    html_lines = [
-        "<html><head><meta charset='utf-8'><title>WP Monitoring Report</title></head><body>",
-        "<h2>Rapport de Monitoring WordPress</h2>",
-        f"<p>Total incidents: {len(history)}</p>",
-        "<ul>"
-    ]
+    # HTML
+    html_lines = ["<html><head><meta charset='utf-8'><title>WP Monitoring Report</title></head><body>",
+                  "<h2>Rapport de Monitoring WordPress</h2>",
+                  f"<p>Total incidents: {len(history)}</p>", "<ul>"]
     for inc in history[-20:]:
         ts = inc["timestamp"]
         typ = inc["type"]
         sev = inc["severity"]
-        html_lines.append(f"<li><b>{ts}</b> [{sev}] <u>{typ}</u> - {inc['details']}</li>")
+        details = json.dumps(inc.get("details", {}), ensure_ascii=False)
+        html_lines.append(f"<li><b>{ts}</b> [{sev}] <u>{typ}</u> - <pre>{details}</pre></li>")
     html_lines.append("</ul></body></html>")
-    html_str = "\n".join(html_lines)
     html_file = config.MONITOR_DIR / "logs.html"
-    html_file.write_text(html_str, encoding="utf-8")
+    html_file.write_text("\n".join(html_lines), encoding="utf-8")
     log(f"Rapport HTML généré -> {html_file}")
-
     return report_str
 
 # === Nettoyage ancien logs ===
@@ -336,10 +347,49 @@ def cleanup_old_reports():
     for f in config.MONITOR_DIR.glob("report_*.txt"):
         mtime = datetime.fromtimestamp(f.stat().st_mtime)
         if (now - mtime).days > config.LOG_RETENTION_DAYS:
-            f.unlink()
-            log(f"Ancien rapport supprimé: {f}")
+            try:
+                f.unlink()
+                log(f"Ancien rapport supprimé: {f}", "INFO")
+            except Exception as e:
+                log(f"Erreur suppression ancien rapport {f}: {e}", "ERROR")
 
 # === Exécution principale ===
+def run_all():
+    log("=== Début du cycle de surveillance ===", "INFO")
+    before = incident_manager.load_incidents()
+    before_count = len(before)
+
+    # Exécuter contrôles
+    res_avail = check_site_availability()
+    res_integrity = check_content_integrity()
+    res_patterns = check_for_malicious_patterns()
+    res_ssl = check_ssl_cert()
+    backup_site()
+    report_text = generate_report()
+    cleanup_old_reports()
+
+    # incidents ajoutés durant ce cycle
+    after = incident_manager.load_incidents()
+    new_incidents = after[len(before):] if len(after) > len(before) else []
+    # préparer le corps du résumé
+    if not new_incidents:
+        subject = f"[INFO WP] Tout est OK - {config.SITE_URL}"
+        body = f"Aucun incident détecté sur {config.SITE_URL} pendant ce cycle.\nHorodatage: {datetime.now(timezone.utc).isoformat()}\n\nRésumé tests:\n- disponibilité: {res_avail}\n- intégrité: {res_integrity['changed']}\n- patterns suspects: {len(res_patterns.get('suspicious_patterns', []))}\n- ssl: {res_ssl.get('days_left')} jours restants\n\nRapport complet dans le dossier {config.MONITOR_DIR}"
+        send_alert(subject, body, incident_type="info", html=True)
+        log("Aucun incident détecté. Email d'information envoyé.", "INFO")
+    else:
+        subject = f"[ALERTE WP] {len(new_incidents)} incident(s) détecté(s) - {config.SITE_URL}"
+        short_lines = []
+        for inc in new_incidents:
+            short_lines.append(f"- [{inc['severity']}] {inc['type']} @ {inc['timestamp']} : {inc['details']}")
+        body = "Nouveaux incidents détectés pendant ce cycle:\n\n" + "\n".join(short_lines)
+        # envoyer le mail (HTML=True pour lisibilité)
+        send_alert(subject, body, incident_type="summary", html=True)
+        log(f"{len(new_incidents)} nouveaux incidents notifiés par email.", "WARNING")
+
+    log("Cycle complet terminé ✅", "INFO")
+
+# CLI
 def main():
     parser = argparse.ArgumentParser(description="WP Monitoring & Backup Tool")
     parser.add_argument("--once", action="store_true", help="Exécution unique")
@@ -351,7 +401,7 @@ def main():
 
     if args.test:
         print("Exécution des tests unitaires...")
-        # Tests simples ici
+        # tests simples (manuel)
     elif args.once:
         run_all()
     elif args.backup:
@@ -361,7 +411,9 @@ def main():
     elif args.report:
         generate_report()
     else:
+        # mode scheduler
         schedule.every(config.CHECK_INTERVAL_HOURS).hours.do(run_all)
+        log(f"Scheduler démarré: interval {config.CHECK_INTERVAL_HOURS}h", "INFO")
         while True:
             schedule.run_pending()
             time.sleep(1)
