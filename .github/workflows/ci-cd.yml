@@ -1,28 +1,31 @@
-name: WordPress.com Monitoring & Backup
+name: WordPress.com CI/CD - Monitoring & Backup
 
 on:
   push:
     branches: ["main"]
+  pull_request:
   schedule:
-    - cron: '0 */3 * * *'   # Toutes les 3h
-  workflow_dispatch:         # Lancement manuel possible
+    - cron: '0 */3 * * *'    # Monitoring toutes les 3h
+    - cron: '30 8 * * *'     # Rapport quotidien à 08h30
+  workflow_dispatch:          # Lancement manuel possible
 
 env:
   SITE_URL: "https://oupssecuretest.wordpress.com"
-  MONITOR_DIR: "monitor_data"
   BACKUP_DIR: "backups"
   RESTORE_DIR: "restored"
   ALERT_EMAIL: "danieltiti882@gmail.com"
   SMTP_SERVER: "smtp.gmail.com"
-  SMTP_PORT: "587"
+  SMTP_PORT: 587
   SMTP_USER: "danieltiti882@gmail.com"
-  SMTP_PASS: "${{ secrets.SMTP_PASS }}"
+  SMTP_PASS: ${{ secrets.SMTP_PASS }}
+  MONITOR_DIR: "monitor_data"
   LOG_RETENTION_DAYS: "30"
   CHECK_INTERVAL_HOURS: "3"
 
 jobs:
-  monitor:
+  monitoring:
     runs-on: ubuntu-latest
+    if: github.event_name != 'schedule' || github.event.schedule != '30 8 * * *'
 
     steps:
       - name: Checkout repository
@@ -36,15 +39,16 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests python-dateutil python-dotenv schedule
+          pip install -r requirements.txt || pip install requests schedule python-dateutil
 
       - name: Create necessary folders
         run: |
           mkdir -p ${{ env.MONITOR_DIR }}
           mkdir -p ${{ env.BACKUP_DIR }}
           mkdir -p ${{ env.RESTORE_DIR }}
+          mkdir -p workflow-logs
 
-      - name: Run WP Monitor
+      - name: Run WP Monitor (exécution unique)
         run: |
           set -o pipefail
           python monitor.py --once 2>&1 | tee ${{ env.MONITOR_DIR }}/last_run.log
@@ -52,42 +56,74 @@ jobs:
       - name: Check TXT report generation
         run: |
           if ls ${{ env.MONITOR_DIR }}/report_*.txt 1> /dev/null 2>&1; then
-            echo "Rapport TXT généré avec succès ✅"
+            echo "<li style='color:green;'>Monitoring terminé avec succès</li>" >> workflow-logs/logs.html
           else
-            echo "ERREUR : rapport TXT non généré ❌"
+            echo "<li style='color:red;'>ERREUR Monitoring</li>" >> workflow-logs/logs.html
             cat ${{ env.MONITOR_DIR }}/last_run.log
             exit 1
           fi
 
-      - name: Send report via email
+      - name: Upload artefacts de monitoring
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitoring-logs
+          path: |
+            monitor_data/
+            workflow-logs/
+
+      - name: Notify on failure
+        if: failure()
+        run: echo "Monitoring failed. Vérifier les logs dans workflow-logs."
+
+      - name: Notify on success
+        if: success()
+        run: echo "Monitoring terminé avec succès."
+
+  daily-report:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' && github.event.schedule == '30 8 * * *'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
         run: |
-          python - << 'EOF'
-import os, smtplib
-from email.mime.text import MIMEText
-from pathlib import Path
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt || pip install requests schedule python-dateutil
 
-monitor_dir = Path(os.environ["MONITOR_DIR"])
-txt_files = sorted(monitor_dir.glob("report_*.txt"), reverse=True)
-if not txt_files:
-    print("Aucun rapport TXT à envoyer")
-    exit(1)
-latest_txt = txt_files[0]
-with latest_txt.open("r", encoding="utf-8") as f:
-    content = f.read()
+      - name: Generate daily report
+        run: python monitor.py --report
 
-msg = MIMEText(content, "plain")
-msg["Subject"] = f"WordPress.com Monitoring Report - {os.environ['SITE_URL']}"
-msg["From"] = os.environ["SMTP_USER"]
-msg["To"] = os.environ["ALERT_EMAIL"]
+      - name: Prepare log folder
+        run: mkdir -p workflow-logs
 
-try:
-    server = smtplib.SMTP(os.environ["SMTP_SERVER"], int(os.environ["SMTP_PORT"]))
-    server.starttls()
-    server.login(os.environ["SMTP_USER"], os.environ["SMTP_PASS"])
-    server.sendmail(os.environ["SMTP_USER"], os.environ["ALERT_EMAIL"], msg.as_string())
-    server.quit()
-    print(f"Email envoyé à {os.environ['ALERT_EMAIL']} ✅")
-except Exception as e:
-    print(f"Erreur envoi email: {e}")
-    exit(1)
-EOF
+      - name: Check daily report
+        run: |
+          if ls ${{ env.MONITOR_DIR }}/report_*.txt 1> /dev/null 2>&1; then
+            echo "<li style='color:green;'>Rapport quotidien généré avec succès</li>" >> workflow-logs/logs.html
+          else
+            echo "<li style='color:red;'>ERREUR Génération rapport quotidien</li>" >> workflow-logs/logs.html
+            exit 1
+          fi
+
+      - name: Upload daily report artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-report-logs
+          path: |
+            monitor_data/
+            workflow-logs/
+
+      - name: Notify on failure
+        if: failure()
+        run: echo "Daily report generation failed. Vérifier les logs."
+
+      - name: Notify on success
+        if: success()
+        run: echo "Daily report généré avec succès."
