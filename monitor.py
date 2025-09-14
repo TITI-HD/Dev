@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 """
 WP Monitor - version améliorée
-- Envoi d'un résumé email à CHAQUE cycle
-- Evite récursion entre IncidentManager.add() et send_alert()
-- Parsing SSL plus robuste
-- Configuration via variables d'environnement
+
+Envoi d'un résumé email à CHAQUE cycle
+Evite récursion entre IncidentManager.add() et send_alert()
+Parsing SSL plus robuste
+Configuration via variables d'environnement
+Amélioration des notifications par email
+Détails précis des incidents détectés
+Sauvegarde après chaque scan
+Maintien en mode alerte
+Accent sur la sécurité
 """
 
 import os
@@ -27,9 +34,15 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List
+from dotenv import load_dotenv
+from concurrent.futures import ThreadPoolExecutor
+import requests
+import schedule
 
-# dépendances optionnelles testées plus loin (requests, schedule, dateutil)
-# --- Vérification des dépendances ---
+# Charger les variables d'environnement à partir du fichier .env.local
+load_dotenv('.env.local')
+
+# Vérification des dépendances
 MISSING = []
 try:
     import requests
@@ -49,7 +62,7 @@ if MISSING:
     print("→ Installer via: pip install " + " ".join(MISSING))
     sys.exit(1)
 
-# === Configuration ===
+# Configuration
 class Config:
     def __init__(self):
         # Variables d'environnement recommandées :
@@ -83,7 +96,7 @@ class Config:
 
 config = Config()
 
-# === Logging rotatif ===
+# Logging rotatif
 logger = logging.getLogger("WPMonitor")
 logger.setLevel(logging.INFO)
 handler = RotatingFileHandler(config.MONITOR_DIR / "monitor.log", maxBytes=5*1024*1024, backupCount=5)
@@ -94,7 +107,7 @@ def log(message: str, level="INFO"):
     getattr(logger, level.lower())(message)
     print(message)
 
-# === Incident Manager ===
+# Incident Manager
 class IncidentManager:
     def __init__(self, history_file: Path):
         self.history_file = history_file
@@ -141,7 +154,7 @@ class IncidentManager:
 
 incident_manager = IncidentManager(config.INCIDENT_HISTORY_FILE)
 
-# === Utilitaires ===
+# Utilitaires
 def compute_hash(content: str) -> str:
     return hashlib.sha256(content.encode('utf-8')).hexdigest()
 
@@ -185,7 +198,7 @@ def send_alert(subject: str, body: str, incident_type="general", html: bool = Tr
         log(f"Erreur envoi alerte: {e}", "ERROR")
         return False
 
-# === Surveillance ===
+# Surveillance
 def check_site_availability() -> Dict:
     log("Vérification disponibilité...")
     results = {'available': False, 'status_code': None, 'response_time': None, 'error': None}
@@ -288,30 +301,65 @@ def check_ssl_cert() -> Dict:
         log(f"Erreur SSL: {e}", "ERROR")
     return results
 
-# === Backup & Restore ===
-def backup_site():
-    log("Démarrage backup site...")
-    backup_name = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
-    backup_path = config.BACKUP_DIR / backup_name
-    try:
-        shutil.make_archive(str(backup_path).replace(".zip", ""), 'zip', config.MONITOR_DIR)
-        incident_manager.add("backup_success", {"backup_file": str(backup_path)}, "low", notify=False)
-        log(f"Sauvegarde OK {emoji('✅')} -> {backup_path}", "INFO")
-    except Exception as e:
-        incident_manager.add("backup_fail", {"error": str(e)}, "high", notify=True)
-        log(f"Erreur backup: {e}", "ERROR")
+# Sauvegarde
+def backup_wordpress_content(source_dir: Path = config.MONITOR_DIR):
+    if not source_dir.exists():
+        log(f"Dossier source '{source_dir}' inexistant.", "ERROR")
+        return
+    metadata = {}
+    files_copied = 0
+    for root, _, files in os.walk(source_dir):
+        for filename in files:
+            src_path = Path(root) / filename
+            rel_path = src_path.relative_to(source_dir)
+            dst_path = config.BACKUP_DIR / rel_path
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                shutil.copy2(src_path, dst_path)
+                metadata[str(rel_path)] = {
+                    "hash": compute_hash(dst_path),
+                    "timestamp": datetime.now().isoformat()
+                }
+                log(f"Fichier sauvegardé: {rel_path}", "SUCCESS")
+                files_copied += 1
+            except Exception as e:
+                log(f"Impossible de sauvegarder {rel_path}: {e}", "ERROR")
+    with (config.BACKUP_DIR / "metadata.json").open("w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=4, ensure_ascii=False)
+    log(f"Sauvegarde terminée: {files_copied} fichiers copiés.", "INFO")
 
-def restore_site(backup_file: Path):
-    log(f"Démarrage restauration: {backup_file}")
+# Restauration
+def restore_all_files(target_dir: Path = config.RESTORE_DIR):
+    metadata_file = config.BACKUP_DIR / "metadata.json"
+    if not metadata_file.exists():
+        log("Métadonnées introuvables, restauration impossible.", "ERROR")
+        return
     try:
-        shutil.unpack_archive(str(backup_file), config.RESTORE_DIR)
-        incident_manager.add("restore_success", {"backup_file": str(backup_file)}, "low", notify=False)
-        log(f"Restauration OK {emoji('✅')} -> {config.RESTORE_DIR}")
+        with metadata_file.open("r", encoding="utf-8") as f:
+            metadata = json.load(f)
     except Exception as e:
-        incident_manager.add("restore_fail", {"backup_file": str(backup_file), "error": str(e)}, "high", notify=True)
-        log(f"Erreur restauration: {e}", "ERROR")
+        log(f"Erreur lecture métadonnées: {e}", "ERROR")
+        return
+    success_count = 0
+    for rel_path, meta in metadata.items():
+        backup_path = config.BACKUP_DIR / rel_path
+        if backup_path.suffix == ".json":
+            continue
+        dest_path = target_dir / rel_path
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            shutil.copy2(backup_path, dest_path)
+            current_hash = compute_hash(dest_path)
+            if current_hash != meta["hash"]:
+                log(f"Hash mismatch: {rel_path}", "ERROR")
+            else:
+                log(f"Restauration OK: {rel_path}", "SUCCESS")
+            success_count += 1
+        except Exception as e:
+            log(f"Erreur restauration fichier {rel_path}: {e}", "ERROR")
+    log(f"=== RESTAURATION TERMINÉE: {success_count}/{len(metadata)} fichiers ===", "INFO")
 
-# === Reporting ===
+# Reporting
 def generate_report() -> str:
     history = incident_manager.load_incidents()
     # Rapport texte synthétique
@@ -341,7 +389,7 @@ def generate_report() -> str:
     log(f"Rapport HTML généré -> {html_file}")
     return report_str
 
-# === Nettoyage ancien logs ===
+# Nettoyage ancien logs
 def cleanup_old_reports():
     now = datetime.now()
     for f in config.MONITOR_DIR.glob("report_*.txt"):
@@ -352,8 +400,17 @@ def cleanup_old_reports():
                 log(f"Ancien rapport supprimé: {f}", "INFO")
             except Exception as e:
                 log(f"Erreur suppression ancien rapport {f}: {e}", "ERROR")
+    # supprimer aussi anciens backups si > LOG_RETENTION_DAYS
+    for f in config.BACKUP_DIR.glob("backup_*.zip"):
+        mtime = datetime.fromtimestamp(f.stat().st_mtime)
+        if (now - mtime).days > config.LOG_RETENTION_DAYS:
+            try:
+                f.unlink()
+                log(f"Ancien backup supprimé: {f}", "INFO")
+            except Exception as e:
+                log(f"Erreur suppression ancien backup {f}: {e}", "ERROR")
 
-# === Exécution principale ===
+# Exécution principale
 def run_all():
     log("=== Début du cycle de surveillance ===", "INFO")
     before = incident_manager.load_incidents()
@@ -364,7 +421,7 @@ def run_all():
     res_integrity = check_content_integrity()
     res_patterns = check_for_malicious_patterns()
     res_ssl = check_ssl_cert()
-    backup_site()
+    backup_wordpress_content()
     report_text = generate_report()
     cleanup_old_reports()
 
@@ -374,7 +431,24 @@ def run_all():
     # préparer le corps du résumé
     if not new_incidents:
         subject = f"[INFO WP] Tout est OK - {config.SITE_URL}"
-        body = f"Aucun incident détecté sur {config.SITE_URL} pendant ce cycle.\nHorodatage: {datetime.now(timezone.utc).isoformat()}\n\nRésumé tests:\n- disponibilité: {res_avail}\n- intégrité: {res_integrity['changed']}\n- patterns suspects: {len(res_patterns.get('suspicious_patterns', []))}\n- ssl: {res_ssl.get('days_left')} jours restants\n\nRapport complet dans le dossier {config.MONITOR_DIR}"
+        body = f"""Aucun incident détecté sur {config.SITE_URL} pendant ce cycle.
+
+Horodatage: {datetime.now(timezone.utc).isoformat()}
+
+Résumé tests:
+
+Disponibilité: {res_avail['available']} (HTTP {res_avail.get('status_code')})
+
+Temps de réponse: {res_avail.get('response_time')} s
+
+Intégrité: {'Changements détectés' if res_integrity['changed'] else 'OK'}
+
+Patterns suspects: {len(res_patterns.get('suspicious_patterns', []))}
+
+SSL: {res_ssl.get('days_left')} jours restants
+
+Rapport complet dans le dossier {config.MONITOR_DIR}
+"""
         send_alert(subject, body, incident_type="info", html=True)
         log("Aucun incident détecté. Email d'information envoyé.", "INFO")
     else:
@@ -405,9 +479,9 @@ def main():
     elif args.once:
         run_all()
     elif args.backup:
-        backup_site()
+        backup_wordpress_content()
     elif args.restore:
-        restore_site(Path(args.restore))
+        restore_all_files(Path(args.restore))
     elif args.report:
         generate_report()
     else:
